@@ -142,8 +142,6 @@ use Dancer2;
 use Dancer2::Serializer::JSON;
 use Dancer2::Session::YAML;
 
-set serializer => 'JSON';
-set session => 'YAML';
 set engines => {
 	'serializer' => {
 		'JSON' => {
@@ -162,6 +160,8 @@ set engines => {
 		}
 	}
 };
+set session => 'YAML';
+set serializer => 'JSON';
 
 set charset => 'UTF-8';
 
@@ -241,9 +241,150 @@ sub getModel() {
 	}
 }
 
+sub getAvailableCVs() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getAvailableCVs();
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getCV() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $cv_id = params->{'cv_id'};
+		my $cvmeta = $domainInstance->getCV($cv_id);
+		
+		send_error("CV $cv_id in domain $domain_id not found",404)  unless(defined($cvmeta));
+		return $cvmeta;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getCVterms() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	
+	my $p_theUris = undef;
+	
+	if(request->method() eq 'POST') {
+		$p_theUris = request->data;
+	}
+	
+	
+	if(defined($domainInstance)) {
+		my $cv_id = params->{'cv_id'};
+		my $comma = index($cv_id,',');
+		my $p_cv_ids;
+		if($comma!=-1) {
+			my @cv_ids = split(/,/,$cv_id);
+			
+			$p_cv_ids = \@cv_ids;
+		} else {
+			$p_cv_ids = $cv_id;
+		}
+		my $cvTerms = $domainInstance->getCVterms($p_cv_ids,$p_theUris);
+		
+		send_error("CV $cv_id in domain $domain_id not found",404)  unless(defined($cvTerms));
+		return $cvTerms;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getCVsFromColumn() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $retval = $domainInstance->getCVsFromColumn(params->{'conceptDomainName'},params->{'conceptName'},params->{'columnName'});
+		send_error("Concept domain ".params->{'conceptDomainName'}.", concept ".params->{'conceptName'}.", column ".params->{'columnName'}." not found on $domain_id",404)  unless(defined($retval));
+		return $retval;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getCVtermsFromColumn() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $p_theUris = undef;
+		$p_theUris = request->data  if(request->method() eq 'POST');
+		
+		my $retval = $domainInstance->getCVtermsFromColumn(params->{'conceptDomainName'},params->{'conceptName'},params->{'columnName'},$p_theUris);
+		send_error("Concept domain ".params->{'conceptDomainName'}.", concept ".params->{'conceptName'}.", column ".params->{'columnName'}." not found on $domain_id",404)  unless(defined($retval));
+		return $retval;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
 prefix '/:domain_id' => sub {
-	get ''	=>	\&getDomain,
-	get '/model'	=>	\&getModel,
+	get ''	=>	\&getDomain;
+	get '/model'	=>	\&getModel;
+	prefix '/model/CV' => sub {
+		get ''	=>	\&getAvailableCVs;
+		get '/:cv_id'	=>	\&getCV;
+		get '/:cv_id/terms'	=>	\&getCVterms;
+		post '/:cv_id/terms'	=>	\&getCVterms;
+		get '/:conceptDomainName/:conceptName/:columnName'	=>	\&getCVsFromColumn;
+		get '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
+		post '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
+	};
 };
 
 package main;

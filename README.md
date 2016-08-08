@@ -5,16 +5,29 @@ This API is needed by EPICO / BLUEPRINT Data Analysis Portal version 1.0 and lat
 
 Installation procedures (dependencies, Apache setup, etc...) are available at [INSTALL.md](INSTALL.md).
 
-Endpoint
+Endpoints
 --------
 
-GET /	It returns the ids of available domains, along with a brief description
-GET /:domain	It returns the domain information, if it could be instantiated
-GET /:domain/model	It returns the model, in JSON format (if applicable)
-/:domain/model/CV	It returns the list of controlled vocabularies related to the model.
-/:domain/model/CV/terms	It returns the list of mapped term set ids (currently disease, tissue and cell)
-/:domain/model/CV/terms/:term_set_id	It returns the terms for given term set id (disease,tissue,cell)
-/:domain/model/CV/terms/:conceptDomain/:concept/:column	It returns all the terms from the controlled vocabularies associated to the column
+* GET /	It returns the ids of available domains, along with a brief description
+
+* GET /:domain	It returns the domain information, if it could be instantiated
+
+* GET /:domain/model	It returns the model, in JSON format (if applicable)
+
+* GET /:domain/model/CV	It returns the list of controlled vocabularies related to the model.
+
+* GET /:domain/model/CV/:cv_id	It returns a brief description of this controlled vocabulary
+
+* GET /:domain/model/CV/:cv_id/terms	It returns the terms for given CV id (disease,tissue,cell)
+
+* POST /:domain/model/CV/:cv_id/terms	It returns the terms for given CV id (disease,tissue,cell), filtered by input terms
+
+* GET /:domain/model/CV/:conceptDomain/:concept/:column	It returns all the controlled vocabularies associated to the column
+
+* GET /:domain/model/CV/:conceptDomain/:concept/:column/terms	It returns all the terms from the controlled vocabularies associated to the column
+
+* POST /:domain/model/CV/:conceptDomain/:concept/:column/terms	It returns all the terms from the controlled vocabularies associated to the column, filtered by input terms
+
 /:domain/sdata	It returns the identifiers of all the donors, specimens, samples and experiments registered in the database.
 /:domain/sdata/_all	It returns all the donors, specimens, samples and experiments registered in the database.
 /:domain/sdata/donor	It returns the identifiers of all the registered donors.

@@ -41,4 +41,24 @@ sub getModel() {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
+sub getAvailableCVs() {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getCV($) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getCVterms($;\@) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getCVsFromColumn($$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getCVtermsFromColumn($$$;\@) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+	
 1;
