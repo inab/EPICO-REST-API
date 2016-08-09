@@ -37,7 +37,7 @@ sub new($$) {
 }
 
 # It returns the data model
-sub getModel() {
+sub getModelFromDomain() {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
@@ -53,6 +53,10 @@ sub getCVterms($;\@) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
+sub getFilteredCVterms(\@) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
 sub getCVsFromColumn($$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
@@ -60,5 +64,29 @@ sub getCVsFromColumn($$$) {
 sub getCVtermsFromColumn($$$;\@) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
-	
+
+sub getSampleTrackingData(;$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getDonors(;$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getSpecimens(;$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getSamples(;$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getExperiments(;$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getAnalysisMetadata(;$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
 1;

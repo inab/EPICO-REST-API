@@ -146,7 +146,7 @@ set engines => {
 	'serializer' => {
 		'JSON' => {
 			'convert_blessed' => 1,
-			'utf8'	=>	1
+			'utf8'	=>	1,
 		}
 	},
 	'deserializer' => {
@@ -235,7 +235,7 @@ sub getModel() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getModel();
+		return $domainInstance->getModelFromDomain();
 	} else {
 		send_error("Domain $domain_id not found",404);
 	}
@@ -303,6 +303,10 @@ sub getCVterms() {
 	
 	if(request->method() eq 'POST') {
 		$p_theUris = request->data;
+		send_error("Expected an input array of strings",500)  unless(ref($p_theUris) eq 'ARRAY');
+		foreach my $term (@{$p_theUris}) {
+			send_error("Expected an input array of strings",500)  unless(defined($term) && ref($term) eq '');
+		}
 	}
 	
 	
@@ -320,6 +324,38 @@ sub getCVterms() {
 		my $cvTerms = $domainInstance->getCVterms($p_cv_ids,$p_theUris);
 		
 		send_error("CV $cv_id in domain $domain_id not found",404)  unless(defined($cvTerms));
+		return $cvTerms;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getFilteredCVterms() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	
+	if(defined($domainInstance)) {
+		my $p_theTerms = request->data;
+		
+		send_error("Expected an input array of strings",500)  unless(ref($p_theTerms) eq 'ARRAY');
+		foreach my $term (@{$p_theTerms}) {
+			send_error("Expected an input array of strings",500)  unless(defined($term) && ref($term) eq '');
+		}
+		
+		my $cvTerms = $domainInstance->getFilteredCVterms($p_theTerms);
+		
+		send_error("Filtered CV terms in domain $domain_id not found",404)  unless(defined($cvTerms));
+		
 		return $cvTerms;
 	} else {
 		send_error("Domain $domain_id not found",404);
@@ -373,17 +409,276 @@ sub getCVtermsFromColumn() {
 	}
 }
 
+sub getSampleTrackingDataIds() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSampleTrackingData(1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getSampleTrackingData() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSampleTrackingData();
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getDonors() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDonors(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getDonor() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDonors(params->{'donor_id'});
+	} else {
+		send_error("Donor ".params->{'donor_id'}." in domain $domain_id not found",404);
+	}
+}
+
+sub getSpecimens() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSpecimens(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getSpecimen() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSpecimens(params->{'specimen_id'});
+	} else {
+		send_error("Specimen ".params->{'specimen_id'}." in domain $domain_id not found",404);
+	}
+}
+
+sub getSamples() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSamples(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getSample() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getSamples(params->{'sample_id'});
+	} else {
+		send_error("Sample ".params->{'sample_id'}." in domain $domain_id not found",404);
+	}
+}
+
+sub getExperiments() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getExperiments(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getExperiment() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getExperiments(params->{'experiment_id'});
+	} else {
+		send_error("Experiment ".params->{'experiment_id'}." in domain $domain_id not found",404);
+	}
+}
+
+sub getAnalysisMetadatas() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getAnalysisMetadata(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getAnalysisMetadata() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getAnalysisMetadata(params->{'analysis_id'});
+	} else {
+		send_error("Analysis metadata ".params->{'analysis_id'}." in domain $domain_id not found",404);
+	}
+}
+
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
 	get '/model'	=>	\&getModel;
 	prefix '/model/CV' => sub {
 		get ''	=>	\&getAvailableCVs;
+		post '/terms'	=>	\&getFilteredCVterms;
 		get '/:cv_id'	=>	\&getCV;
 		get '/:cv_id/terms'	=>	\&getCVterms;
 		post '/:cv_id/terms'	=>	\&getCVterms;
 		get '/:conceptDomainName/:conceptName/:columnName'	=>	\&getCVsFromColumn;
 		get '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
 		post '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
+	};
+	prefix '/sdata' => sub {
+		get ''	=>	\&getSampleTrackingDataIds;
+		get '/_all'	=>	\&getSampleTrackingData;
+		get '/donor'	=>	\&getDonors;
+		get '/donor/:donor_id'	=>	\&getDonor;
+		get '/specimen'	=>	\&getSpecimens;
+		get '/specimen/:specimen_id'	=>	\&getSpecimen;
+		get '/sample'	=>	\&getSamples;
+		get '/sample/:sample_id'	=>	\&getSample;
+		get '/experiment'	=>	\&getExperiments;
+		get '/experiment/:experiment_id'	=>	\&getExperiment;
+	};
+	prefix '/analysis/metadata' => sub {
+		get ''	=>	\&getAnalysisMetadatas;
+		get '/:analysis_id'	=>	\&getAnalysisMetadata;
+	};
+	prefix '/analysis/data' => sub {
 	};
 };
 
@@ -392,7 +687,7 @@ package main;
 use Plack::Builder;
 builder {
 # Enabling this we get some issues, so disabled for now
-#	enable 'Deflater', content_type => ['text/plain','text/css','text/html','text/javascript','application/javascript','application/json'];
+	enable 'Deflater', content_type => ['text/plain','text/css','text/html','text/javascript','application/javascript','application/json'];
 	enable 'CrossOrigin', origins => '*';
 	mount '/'    => EPICO::REST::API->to_app;
 };

@@ -76,7 +76,7 @@ sub new($$) {
 }
 
 # It returns the data model stored in the database
-sub getModel() {
+sub getModelFromDomain() {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
@@ -230,7 +230,7 @@ sub getCVterms($;\@) {
 						}
 					}
 				},
-				'fields' => ['term','term_uri','name','ont']
+				'fields' => ['term','term_uri','name','ancestors','ont']
 			});
 			
 			my @CVterms = ();
@@ -246,6 +246,7 @@ sub getCVterms($;\@) {
 							'name'	=>	$p_fields->{'name'}[0],
 							'term'	=>	$p_fields->{'term'}[0],
 							'term_uri'	=>	$p_fields->{'term_uri'}[0],
+							'ancestors'	=>	$p_fields->{'ancestors'},
 							'ont'	=>	$p_fields->{'ont'}[0],
 						});
 					}
@@ -259,6 +260,65 @@ sub getCVterms($;\@) {
 	return $doc;
 }
 
+sub getFilteredCVterms(\@) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($p_theTerms) = @_;
+	my $doc = undef;
+	
+	my(undef,undef,$metaCVTermConcept) = BP::Loader::Mapper::Elasticsearch::__getMetaConcepts($self->{model});
+	
+	my $mapper = $self->{mapper};
+	
+	my @CVterms = ();
+	
+	# Don't query with an empty array, it doesn't make sense
+	if(scalar(@{$p_theTerms}) > 0) {
+		my $p_filter =  {
+			'terms' => {
+				'term' => $p_theTerms
+			}
+		};
+		
+		my $scroll = $mapper->queryConcept($metaCVTermConcept,{
+			'query' => {
+				'filtered' =>  {
+					'query' => {
+						'match_all' => {}
+					},
+					'filter' => $p_filter
+				}
+			},
+			'fields' => ['term','term_uri','name','parents','ont']
+		});
+		
+		until($scroll->is_finished) {
+			$scroll->refill_buffer();
+			my @docs = $scroll->drain_buffer();
+			
+			if(scalar(@docs) > 0) {
+				$doc = \@CVterms;
+				foreach my $doc (@docs) {
+					my $p_fields = $doc->{fields};
+					push(@CVterms,{
+						'name'	=>	$p_fields->{'name'}[0],
+						'term'	=>	$p_fields->{'term'}[0],
+						'term_uri'	=>	$p_fields->{'term_uri'}[0],
+						'parents'	=>	$p_fields->{'parents'},
+						'ont'	=>	$p_fields->{'ont'}[0],
+					});
+				}
+			}
+		}
+	} else {
+		$doc = [];
+	}
+	
+	return $doc;
+}
+
 sub getCVsFromColumn($$$) {
 	my $self = shift;
 	
@@ -266,7 +326,7 @@ sub getCVsFromColumn($$$) {
 	
 	my($conceptDomainName,$conceptName,$columnName) = @_;
 	
-	my $dbModel = $self->getModel();
+	my $dbModel = $self->getModelFromDomain();
 	
 	my $retval = undef;
 	
@@ -306,5 +366,284 @@ sub getCVtermsFromColumn($$$;\@) {
 	
 	return $retval;
 }
+
+use constant {
+	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN	=>	'sdata',
+	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN	=>	'lab',
+};
+
+use constant {
+	DONOR_CONCEPT	=>	'donor',
+	SPECIMEN_CONCEPT	=>	'specimen',
+	SAMPLE_CONCEPT	=>	'sample',
+};
+
+use constant {
+	DONOR_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . DONOR_CONCEPT(),
+	SPECIMEN_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . SPECIMEN_CONCEPT(),
+	SAMPLE_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . SAMPLE_CONCEPT(),
+};
+
+my %concept2id = (
+	DONOR_CONCEPT_TYPE()	=>	'donor_id',
+	SPECIMEN_CONCEPT_TYPE()	=>	'specimen_id',
+	SAMPLE_CONCEPT_TYPE()	=>	'sample_id',
+);
+
+use constant	EXPERIMENT_ID	=>	'experiment_id';
+
+my %conceptDomain2id = (
+	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN()	=>	EXPERIMENT_ID(),
+);
+
+use constant {
+	METADATA_COLLECTION	=>	'metadata',
+	PRIMARY_COLLECTION	=>	'primary',
+};
+
+use constant	ANALYSIS_ID	=>	'analysis_id';
+
+my %collection2id = (
+	METADATA_COLLECTION()	=>	ANALYSIS_ID(),
+);
+
+
+use constant	ALL_IDS	=>	'_all';
+
+sub getSampleTrackingData(;$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($onlyIds) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	
+	# Getting the correspondence from concepts to collections, so the queries can be issued
+	my @concepts = ();
+	foreach my $conceptDomainName ((SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN(),LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN())) {
+		
+		if(exists($dbModel->{'domains'}{$conceptDomainName})) {
+			my $conceptDomain = $model->getConceptDomain($conceptDomainName);
+			
+			if(defined($conceptDomain)) {
+				my $p_concepts = $conceptDomain->concepts();
+				push(@concepts,@{$p_concepts})  if(defined($p_concepts));
+			}
+		}
+	}
+	
+	my $mapper = $self->{mapper};
+	
+	my $retval = undef;
+	my $scroll = $mapper->queryConcept(\@concepts,{});
+	my @metadata = ();
+	until($scroll->is_finished) {
+		$scroll->refill_buffer();
+		my @docs = $scroll->drain_buffer();
+		
+		if(scalar(@docs) > 0) {
+			$retval = \@metadata;
+			foreach my $doc (@docs) {
+				
+				my $data = undef;
+				
+				if($onlyIds) {
+					my $key = exists($concept2id{$doc->{_type}}) ? $concept2id{$doc->{_type}} : EXPERIMENT_ID();
+					$data = {
+						'_type'	=>	$doc->{_type},
+						$key	=>	$doc->{_source}{$key}
+					};
+				} else {
+					$doc->{_source}{_type} = $doc->{_type};
+					$data = $doc->{_source};
+				}
+				
+				push(@metadata,$data);
+			}
+		}
+	}
+	return $retval;
+}
+
+sub _getFromConcept($$;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($conceptDomainName, $conceptName,$key_id,$onlyIds) = @_;
+	
+	$key_id = undef  if(defined($key_id) && $key_id eq ALL_IDS());
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'domains'}{$conceptDomainName})) {
+		my $conceptDomain = $model->getConceptDomain($conceptDomainName);
+		
+		if(defined($conceptDomain)) {
+			my $concept = undef;
+			my $key_name = undef;
+			
+			if(defined($conceptName)) {
+				$concept = $conceptDomain->conceptHash()->{$conceptName};
+				$key_name = $concept2id{$concept->id()};
+			} else {
+				$concept = $conceptDomain->concepts();
+				$key_name = $conceptDomain2id{$conceptDomainName};
+			}
+			
+			my $query_body = defined($key_id) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { "term" => { $key_name  => $key_id } } } } } : {};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scroll = $mapper->queryConcept($concept,$query_body);
+			
+			my @metadata = ();
+			until($scroll->is_finished) {
+				$scroll->refill_buffer();
+				my @docs = $scroll->drain_buffer();
+				
+				if(scalar(@docs) > 0) {
+					if(defined($key_id)) {
+						my $doc = $docs[0];
+						$doc->{_source}{_type} = $doc->{_type};
+						$retval = $doc->{_source};
+						last;
+					} else {
+						$retval = \@metadata;
+						foreach my $doc (@docs) {
+							my $data = undef;
+							if($onlyIds) {
+								$data = {
+									$key_name	=>	$doc->{_source}{$key_name}
+								};
+							} else {
+								$data = $doc->{_source};
+							}
+							$data->{_type} = $doc->{_type};
+							
+							push(@metadata,$data);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getDonors(;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($donor_id,$onlyIds) = @_;
+	
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,DONOR_CONCEPT,$donor_id,$onlyIds);
+}
+
+sub getSpecimens(;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($specimen_id,$onlyIds) = @_;
+	
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,SPECIMEN_CONCEPT,$specimen_id,$onlyIds);
+}
+
+sub getSamples(;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($sample_id,$onlyIds) = @_;
+	
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,SAMPLE_CONCEPT,$sample_id,$onlyIds);
+}
+
+sub getExperiments(;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($experiment_id,$onlyIds) = @_;
+	
+	return $self->_getFromConcept(LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN,undef,$experiment_id,$onlyIds);
+}
+
+sub _getFromCollection($;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$key_id,$onlyIds) = @_;
+	
+	$key_id = undef  if(defined($key_id) && $key_id eq ALL_IDS());
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $key_name = $collection2id{$collectionName};
+			
+			my $query_body = defined($key_id) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { "term" => { $key_name  => $key_id } } } } } : {};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scroll = $mapper->queryCollection($collection,$query_body);
+			
+			my @metadata = ();
+			until($scroll->is_finished) {
+				$scroll->refill_buffer();
+				my @docs = $scroll->drain_buffer();
+				
+				if(scalar(@docs) > 0) {
+					if(defined($key_id)) {
+						my $doc = $docs[0];
+						$doc->{_source}{_type} = $doc->{_type};
+						$retval = $doc->{_source};
+						last;
+					} else {
+						$retval = \@metadata;
+						foreach my $doc (@docs) {
+							my $data = undef;
+							if($onlyIds) {
+								$data = {
+									$key_name	=>	$doc->{_source}{$key_name}
+								};
+							} else {
+								$data = $doc->{_source};
+							}
+							$data->{_type} = $doc->{_type};
+							
+							push(@metadata,$data);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getAnalysisMetadata(;$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($analysis_id,$onlyIds) = @_;
+	
+	return $self->_getFromCollection(METADATA_COLLECTION,$analysis_id,$onlyIds);
+}
+
+
 
 1;
