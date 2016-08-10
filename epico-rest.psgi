@@ -147,6 +147,7 @@ set engines => {
 		'JSON' => {
 			'convert_blessed' => 1,
 			'utf8'	=>	1,
+#			'pretty'	=>	1,
 		}
 	},
 	'deserializer' => {
@@ -649,6 +650,122 @@ sub getAnalysisMetadata() {
 	}
 }
 
+sub getDataFromCoordsCommon(@) {
+	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDataFromCoords($chromosome,$chromosome_start,$chromosome_end);
+	} else {
+		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+	}
+}
+
+sub getDataFromCoords() {
+	return getDataFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+}
+
+
+sub getDataFromCoordsAlt() {
+	return getDataFromCoordsCommon(splat);
+}
+
+sub getDataCountFromCoordsCommon(@) {
+	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDataCountFromCoords($chromosome,$chromosome_start,$chromosome_end);
+	} else {
+		send_error("Data count on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+	}
+}
+
+sub getDataCountFromCoords() {
+	return getDataCountFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+}
+
+
+sub getDataCountFromCoordsAlt() {
+	return getDataCountFromCoordsCommon(splat);
+}
+
+sub getDataStatsFromCoordsCommon(@) {
+	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDataStatsFromCoords($chromosome,$chromosome_start,$chromosome_end);
+	} else {
+		send_error("Data stats on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+	}
+}
+
+sub getDataStatsFromCoords() {
+	return getDataStatsFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+}
+
+
+sub getDataStatsFromCoordsAlt() {
+	return getDataStatsFromCoordsCommon(splat);
+}
+
+sub getGenomicLayoutFromCoordsCommon(@) {
+	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getGenomicLayoutFromCoords($chromosome,$chromosome_start,$chromosome_end);
+	} else {
+		send_error("Genomic layout on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+	}
+}
+
+sub getGenomicLayoutFromCoords() {
+	return getGenomicLayoutFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+}
+
+
+sub getGenomicLayoutFromCoordsAlt() {
+	return getGenomicLayoutFromCoordsCommon(splat);
+}
+
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
 	get '/model'	=>	\&getModel;
@@ -679,8 +796,26 @@ prefix '/:domain_id' => sub {
 		get '/:analysis_id'	=>	\&getAnalysisMetadata;
 	};
 	prefix '/analysis/data' => sub {
+		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getDataFromCoords;
+		# As Dancer2 fails on this, we have to setup a full route for it
+		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
+		get '/:chromosome/:chromosome_start/:chromosome_end/stats'	=>	\&getDataStatsFromCoords;
+		# As Dancer2 fails on this, we have to setup a full route for it
+		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
+		get '/:chromosome/:chromosome_start/:chromosome_end/count'	=>	\&getDataCountFromCoords;
+		# As Dancer2 fails on this, we have to setup a full route for it
+		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
+	};
+	prefix '/genomic_layout' => sub {
+		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getGenomicLayoutFromCoords;
+		# As Dancer2 fails on this, we have to setup a full route for it
+		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
 	};
 };
+get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
+get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
+get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
+get qr{/([^/]+)/genomic_layout/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
 
 package main;
 

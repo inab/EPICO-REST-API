@@ -54,9 +54,17 @@ Endpoints
 
 * GET /:domain/analysis/metadata/:analysis_id	It returns the analysis metadata whose analysis id is this. Special '_all' analysis id returns all the analysis.
 
-/:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end
-/:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/stats
-/:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/detailed_stats
-/:domain/genomic_layout/:chromosome/:chromosome_start/:chromosome_end
+* GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end
+* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
+
+* GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/count
+* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/count	It counts the number of related results per analysis
+
+* GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/stats
+* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stats	It gives detailed stats	(only for BLUEPRINT)
+
+* GET /:domain/genomic_layout/:chromosome/:chromosome_start/:chromosome_end
+* GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
+
 /:domain/features?query=
 /:domain/features/suggest?query=

@@ -89,4 +89,40 @@ sub getAnalysisMetadata(;$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
+sub getDataFromCoords($$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getGenomicLayout($) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getGenomicLayoutFromCoords($$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
+	
+	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	my $rangeData = {
+		'range'	=>	[
+			{
+				'chr'	=>	$chromosome,
+				'start'	=>	$chromosome_start,
+				'end'	=>	$chromosome_end
+			}
+		]
+	};
+	
+	return $self->getGenomicLayout($rangeData);
+}
+
+sub getDataCountFromCoords($$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getDataStatsFromCoords($$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
 1;

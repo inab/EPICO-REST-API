@@ -376,6 +376,7 @@ use constant {
 	DONOR_CONCEPT	=>	'donor',
 	SPECIMEN_CONCEPT	=>	'specimen',
 	SAMPLE_CONCEPT	=>	'sample',
+	FEATURES_CONCEPT	=>	'features',
 };
 
 use constant {
@@ -399,16 +400,34 @@ my %conceptDomain2id = (
 use constant {
 	METADATA_COLLECTION	=>	'metadata',
 	PRIMARY_COLLECTION	=>	'primary',
+	EXTERNAL_COLLECTION	=>	'external',
 };
 
 use constant	ANALYSIS_ID	=>	'analysis_id';
 
 my %collection2id = (
 	METADATA_COLLECTION()	=>	ANALYSIS_ID(),
+	PRIMARY_COLLECTION()	=>	ANALYSIS_ID(),
 );
 
+my %collection2agg = (
+	PRIMARY_COLLECTION()	=>	'analyses',
+);
 
 use constant	ALL_IDS	=>	'_all';
+
+use constant {
+	REGION_FEATURE_GENE	=>	'gene',
+	REGION_FEATURE_TRANSCRIPT	=>	'transcript',
+	REGION_FEATURE_UTR	=>	'UTR',
+	REGION_FEATURE_START_CODON	=>	'start_codon',
+	REGION_FEATURE_STOP_CODON	=>	'stop_codon',
+	REGION_FEATURE_EXON	=>	'exon',
+	REGION_FEATURE_CDS	=>	'CDS',
+	REGION_FEATURE_SELENOCYSTEINE	=>	'Selenocysteine',
+};
+
+use constant REGION_FEATURES => [ REGION_FEATURE_GENE , REGION_FEATURE_TRANSCRIPT, REGION_FEATURE_UTR, REGION_FEATURE_EXON, REGION_FEATURE_CDS, REGION_FEATURE_START_CODON, REGION_FEATURE_STOP_CODON ];
 
 sub getSampleTrackingData(;$) {
 	my $self = shift;
@@ -645,5 +664,544 @@ sub getAnalysisMetadata(;$$) {
 }
 
 
+sub _genShouldQuery($;$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($rangeData,$prefix) = @_;
+	
+	my $flankingWindowSize = exists($rangeData->{flankingWindowSize}) ? $rangeData->{flankingWindowSize} : 0;
+	
+	my $rangeQueryArr = $rangeData->{range};
+	$rangeQueryArr = [ $rangeQueryArr ]  unless(ref($rangeQueryArr) eq 'ARRAY');
+	
+	my $chromosome_name = 'chromosome';
+	my $chromosome_start_name = 'chromosome_start';
+	my $chromosome_end_name = 'chromosome_end';
+	if(defined($prefix)) {
+		$chromosome_name = $prefix . '.' . $chromosome_name;
+		$chromosome_start_name = $prefix . '.' . $chromosome_start_name;
+		$chromosome_end_name = $prefix . '.' . $chromosome_end_name;
+	}
+	
+	my @shouldQuery = ();
+	
+	foreach my $q (@{$rangeQueryArr}) {
+		my $qStart = $q->{'start'} - $flankingWindowSize;
+		my $qEnd = $q->{'end'} + $flankingWindowSize;
+		
+		my $termQuery = {
+			$chromosome_name	=>	$q->{'chr'}
+		};
+		
+		my $commonRange = {
+			'gte'	=>	$qStart,
+			'lte'	=>	$qEnd
+		};
+		
+		my $chromosome_start_range = {
+			$chromosome_start_name	=>	$commonRange
+		};
+		
+		my $chromosome_end_range = {
+			$chromosome_end_name	=>	$commonRange
+		};
+		
+		my $chromosome_start_lte_range = {
+			$chromosome_start_name	=>	{
+				'lte'	=>	$qEnd
+			}
+		};
+		
+		my $chromosome_end_gte_range = {
+			$chromosome_end_name	=>	{
+				'gte'	=>	$qStart
+			}
+		};
+		
+		push(@shouldQuery,{
+			'bool'	=>	{
+				'must'	=>	[
+					{
+						'term'	=>	$termQuery
+					},
+					{
+						'bool'	=>	{
+							'should'	=>	[
+								{
+									'range'	=>	$chromosome_start_range
+								},
+								{
+									'range'	=>	$chromosome_end_range
+								},
+								{
+									'bool'	=>	{
+										'must'	=>	[
+											{
+												'range'	=>	$chromosome_start_lte_range
+											},
+											{
+												'range'	=>	$chromosome_end_gte_range
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				]
+			}
+		});
+	}
+	
+	my $p_shouldQuery = undef;
+	if(defined($prefix)) {
+		$p_shouldQuery = {
+			'nested'	=> {
+				'path'	=>	$prefix,
+				'filter'	=>	{
+					'bool'	=>	{
+						'should'	=>	\@shouldQuery
+					}
+				}
+			}
+		};
+	} else {
+		$p_shouldQuery = \@shouldQuery;
+	}
+	
+	return $p_shouldQuery;
+}
+
+
+sub _getDataFromCollection($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$rangeData) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $shouldQuery = $self->_genShouldQuery($rangeData);
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'should'	=>	$shouldQuery
+							}
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scroll = $mapper->queryCollection($collection,$query_body);
+			
+			my @dataArr = ();
+			until($scroll->is_finished) {
+				$scroll->refill_buffer();
+				my @docs = $scroll->drain_buffer();
+				
+				if(scalar(@docs) > 0) {
+					$retval = \@dataArr;
+					foreach my $doc (@docs) {
+						my $data = $doc->{_source};
+						$data->{_type} = $doc->{_type};
+						
+						push(@dataArr,$data);
+					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getDataFromCoords($$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	my $rangeData = {
+		'range'	=>	[
+			{
+				'chr'	=>	$chromosome,
+				'start'	=>	$chromosome_start,
+				'end'	=>	$chromosome_end
+			}
+		]
+	};
+	
+	return $self->_getDataFromCollection(PRIMARY_COLLECTION,$rangeData);
+}
+
+sub _getDataCountFromCollection($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$rangeData) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $shouldQuery = $self->_genShouldQuery($rangeData);
+			my $key_name = $collection2id{$collectionName};
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'should'	=>	$shouldQuery
+							}
+						}
+					}
+				},
+				'aggregations'	=>	{
+					'analyses'	=>	{
+						'terms'	=>	{
+							'field'	=>	$key_name,
+							'size'	=>	0
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $results = $mapper->immediateQueryCollection($collection,$query_body,'count',undef,{'request_cache' => boolean::true });
+			
+			if(exists($results->{'aggregations'})) {
+				my @dataArr = ();
+				foreach my $data (@{$results->{'aggregations'}->{'analyses'}->{'buckets'}}) {
+				
+					push(@dataArr,$data);
+				}
+				$retval = \@dataArr;
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getDataCountFromCoords($$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	my $rangeData = {
+		'range'	=>	[
+			{
+				'chr'	=>	$chromosome,
+				'start'	=>	$chromosome_start,
+				'end'	=>	$chromosome_end
+			}
+		]
+	};
+	
+	return $self->_getDataCountFromCollection(PRIMARY_COLLECTION,$rangeData);
+}
+
+use constant {
+	DLAT_CONCEPT_DOMAIN_NAME	=>	'dlat',
+	EXPG_CONCEPT_DOMAIN_NAME	=>	'exp',
+	EXPT_CONCEPT_DOMAIN_NAME	=>	'exp',
+	RREG_CONCEPT_DOMAIN_NAME	=>	'rreg',
+	PDNA_CONCEPT_DOMAIN_NAME	=>	'pdna',
+	
+	DLAT_CONCEPT_NAME	=>	'mr',
+	EXPG_CONCEPT_NAME	=>	'g',
+	EXPT_CONCEPT_NAME	=>	't',
+	RREG_CONCEPT_NAME	=>	'p',
+	PDNA_CONCEPT_NAME	=>	'p',
+	
+	DLAT_AGG_NAME	=>	'Wgbs',
+	EXPG_AGG_NAME	=>	'RnaSeqG',
+	EXPT_AGG_NAME	=>	'RnaSeqT',
+	RREG_AGG_NAME	=>	'Dnase',
+	PDNA_AGG_NAME	=>	'ChipSeq',
+};
+
+sub _getDataStatsFromCollection($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$rangeData) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $shouldQuery = $self->_genShouldQuery($rangeData);
+			my $key_name = $collection2id{$collectionName};
+			
+			my $DLAT_CONCEPT = $model->getConceptDomain(DLAT_CONCEPT_DOMAIN_NAME)->conceptHash()->{DLAT_CONCEPT_NAME()}->id();
+			my $EXPG_CONCEPT = $model->getConceptDomain(EXPG_CONCEPT_DOMAIN_NAME)->conceptHash()->{EXPG_CONCEPT_NAME()}->id();
+			my $EXPT_CONCEPT = $model->getConceptDomain(EXPT_CONCEPT_DOMAIN_NAME)->conceptHash()->{EXPT_CONCEPT_NAME()}->id();
+			my $RREG_CONCEPT = $model->getConceptDomain(RREG_CONCEPT_DOMAIN_NAME)->conceptHash()->{RREG_CONCEPT_NAME()}->id();
+			my $PDNA_CONCEPT = $model->getConceptDomain(PDNA_CONCEPT_DOMAIN_NAME)->conceptHash()->{PDNA_CONCEPT_NAME()}->id();
+			
+			my %agg2type = (
+				DLAT_AGG_NAME()	=>	$DLAT_CONCEPT,
+				EXPG_AGG_NAME()	=>	$EXPG_CONCEPT,
+				EXPT_AGG_NAME()	=>	$EXPT_CONCEPT,
+				RREG_AGG_NAME()	=>	$RREG_CONCEPT,
+				PDNA_AGG_NAME()	=>	$PDNA_CONCEPT,
+			);
+			
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'should'	=>	$shouldQuery
+							}
+						}
+					}
+				},
+				'aggregations'	=>	{
+					DLAT_AGG_NAME()	=>	{
+						'filter'	=>	{
+							'term'	=>	{
+								'_type'	=>	$DLAT_CONCEPT
+							}
+						},
+						'aggregations'	=>	{
+							'analyses'	=>	{
+								'terms'	=>	{
+									'field'	=>	$key_name,
+									'size'	=>	0
+								},
+								'aggs'	=>	{
+									'stats_meth_level'	=>	{
+										'extended_stats'	=>	{
+											'field'	=>	'meth_level'
+										}
+									}
+								}
+							}
+						}
+					},
+					EXPG_AGG_NAME()	=>	{
+						'filter'	=>	{
+							'term'	=>	{
+								'_type'	=>	$EXPG_CONCEPT
+							}
+						},
+						'aggregations'	=>	{
+							'analyses'	=>	{
+								'terms'	=>	{
+									'field'	=>	$key_name,
+									'size'	=>	0
+								},
+								'aggs'	=>	{
+									'stats_normalized_read_count'	=>	{
+										'extended_stats'	=>	{
+											'field'	=>	'expected_count'
+										}
+									}
+								}
+							}
+						}
+					},
+					EXPT_AGG_NAME()	=>	{
+						'filter'	=>	{
+							'term'	=>	{
+								'_type'	=>	$EXPT_CONCEPT
+							}
+						},
+						'aggregations'	=>	{
+							'analyses'	=>	{
+								'terms'	=>	{
+									'field'	=>	$key_name,
+									'size'	=>	0
+								},
+								'aggs'	=>	{
+									'stats_normalized_read_count'	=>	{
+										'extended_stats'	=>	{
+											'field'	=>	'expected_count'
+										}
+									}
+								}
+							}
+						}
+					},
+					RREG_AGG_NAME()	=>	{
+						'filter'	=>	{
+							'term'	=>	{
+								'_type'	=>	$RREG_CONCEPT
+							}
+						},
+						'aggregations'	=>	{
+							'analyses'	=>	{
+								'terms'	=>	{
+									'field'	=>	$key_name,
+									'size'	=>	0
+								},
+								'aggs'	=>	{
+									'peak_size'	=>	{
+										'sum'	=>	{
+											'lang'	=>	"expression",
+											'script'	=>	"doc['chromosome_end'].value - doc['chromosome_start'].value + 1" 
+										}
+									}
+								}
+							}
+						}
+					},
+					PDNA_AGG_NAME()	=>	{
+						'filter'	=>	{
+							'term'	=>	{
+								'_type'	=>	$PDNA_CONCEPT
+							}
+						},
+						'aggregations'	=>	{
+							'analyses'	=>	{
+								'terms'	=>	{
+									'field'	=>	$key_name,
+									'size'	=>	0
+								},
+								'aggs'	=>	{
+									'peak_size'	=>	{
+										'sum'	=>	{
+											'lang'	=>	"expression",
+											'script'	=>	"doc['chromosome_end'].value - doc['chromosome_start'].value + 1" 
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $results = $mapper->immediateQueryCollection($collection,$query_body,'count',undef,{'request_cache' => boolean::true });
+			
+			if(exists($results->{'aggregations'})) {
+				my @dataArr = ();
+				foreach my $aggType (keys(%agg2type)) {
+					my $type = $agg2type{$aggType};
+					
+					foreach my $data (@{$results->{'aggregations'}->{$aggType}->{'analyses'}->{'buckets'}}) {
+						$data->{_type} = $type;
+						push(@dataArr,$data);
+					}
+				}
+				$retval = \@dataArr;
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getDataStatsFromCoords($$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	my $rangeData = {
+		'range'	=>	[
+			{
+				'chr'	=>	$chromosome,
+				'start'	=>	$chromosome_start,
+				'end'	=>	$chromosome_end
+			}
+		]
+	};
+	
+	return $self->_getDataStatsFromCollection(PRIMARY_COLLECTION,$rangeData);
+}
+
+sub getGenomicLayout($) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($rangeData) = @_;
+	
+	my $conceptDomainName = EXTERNAL_COLLECTION();
+	my $conceptName = FEATURES_CONCEPT();
+	my $prefix = 'coordinates';
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'domains'}{$conceptDomainName})) {
+		my $conceptDomain = $model->getConceptDomain($conceptDomainName);
+		
+		if(defined($conceptDomain) && exists($conceptDomain->conceptHash()->{$conceptName})) {
+			my $concept = $conceptDomain->conceptHash()->{$conceptName};
+			my $nestedShouldQuery = $self->_genShouldQuery($rangeData,$prefix);
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'must'	=>	[
+									{
+										'terms'	=>	{
+											'feature'	=>	REGION_FEATURES()
+										}
+									},
+									$nestedShouldQuery
+								]
+							}
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scroll = $mapper->queryConcept($concept,$query_body);
+			
+			my @dataArr = ();
+			until($scroll->is_finished) {
+				$scroll->refill_buffer();
+				my @docs = $scroll->drain_buffer();
+				
+				if(scalar(@docs) > 0) {
+					$retval = \@dataArr;
+					foreach my $doc (@docs) {
+						my $data = $doc->{_source};
+						$data->{_type} = $doc->{_type};
+						
+						push(@dataArr,$data);
+					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
 
 1;
