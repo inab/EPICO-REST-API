@@ -304,9 +304,9 @@ sub getCVterms() {
 	
 	if(request->method() eq 'POST') {
 		$p_theUris = request->data;
-		send_error("Expected an input array of strings",500)  unless(ref($p_theUris) eq 'ARRAY');
+		send_error("Expected an input array of strings",400)  unless(ref($p_theUris) eq 'ARRAY');
 		foreach my $term (@{$p_theUris}) {
-			send_error("Expected an input array of strings",500)  unless(defined($term) && ref($term) eq '');
+			send_error("Expected an input array of strings",400)  unless(defined($term) && ref($term) eq '');
 		}
 	}
 	
@@ -348,9 +348,9 @@ sub getFilteredCVterms() {
 	if(defined($domainInstance)) {
 		my $p_theTerms = request->data;
 		
-		send_error("Expected an input array of strings",500)  unless(ref($p_theTerms) eq 'ARRAY');
+		send_error("Expected an input array of strings",400)  unless(ref($p_theTerms) eq 'ARRAY');
 		foreach my $term (@{$p_theTerms}) {
-			send_error("Expected an input array of strings",500)  unless(defined($term) && ref($term) eq '');
+			send_error("Expected an input array of strings",400)  unless(defined($term) && ref($term) eq '');
 		}
 		
 		my $cvTerms = $domainInstance->getFilteredCVterms($p_theTerms);
@@ -766,6 +766,64 @@ sub getGenomicLayoutFromCoordsAlt() {
 	return getGenomicLayoutFromCoordsCommon(splat);
 }
 
+sub queryFeatures() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $queryString = exists(query_parameters->{'q'}) ? query_parameters->{'q'} : undef;
+		
+		if(defined($queryString)) {
+			$queryString =~ s/^\s+//;
+			$queryString =~ s/\s+$//;
+			$queryString = undef  if(length($queryString) == 0);
+		}
+		
+		send_error("Empty query",400)  unless(defined($queryString));
+		return $domainInstance->queryFeatures($queryString);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub suggestFeatures() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $queryString = exists(query_parameters->{'q'}) ? query_parameters->{'q'} : undef;
+		
+		if(defined($queryString)) {
+			$queryString =~ s/^\s+//;
+			$queryString =~ s/\s+$//;
+			$queryString = undef  if(length($queryString) == 0);
+		}
+		
+		send_error("Empty query",400)  unless(defined($queryString));
+		return $domainInstance->suggestFeatures($queryString);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
 	get '/model'	=>	\&getModel;
@@ -811,6 +869,8 @@ prefix '/:domain_id' => sub {
 		# As Dancer2 fails on this, we have to setup a full route for it
 		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
 	};
+	get '/features' => \&queryFeatures;
+	get '/features/suggest' => \&suggestFeatures;
 };
 get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
 get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;

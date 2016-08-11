@@ -368,21 +368,22 @@ sub getCVtermsFromColumn($$$;\@) {
 }
 
 use constant {
-	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN	=>	'sdata',
-	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN	=>	'lab',
+	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME	=>	'sdata',
+	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME	=>	'lab',
+	EXTERNAL_CONCEPT_DOMAIN_NAME	=>	'external',
 };
 
 use constant {
-	DONOR_CONCEPT	=>	'donor',
-	SPECIMEN_CONCEPT	=>	'specimen',
-	SAMPLE_CONCEPT	=>	'sample',
-	FEATURES_CONCEPT	=>	'features',
+	DONOR_CONCEPT_NAME	=>	'donor',
+	SPECIMEN_CONCEPT_NAME	=>	'specimen',
+	SAMPLE_CONCEPT_NAME	=>	'sample',
+	FEATURES_CONCEPT_NAME	=>	'features',
 };
 
 use constant {
-	DONOR_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . DONOR_CONCEPT(),
-	SPECIMEN_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . SPECIMEN_CONCEPT(),
-	SAMPLE_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN() . '.' . SAMPLE_CONCEPT(),
+	DONOR_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . DONOR_CONCEPT_NAME(),
+	SPECIMEN_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . SPECIMEN_CONCEPT_NAME(),
+	SAMPLE_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . SAMPLE_CONCEPT_NAME(),
 };
 
 my %concept2id = (
@@ -394,13 +395,12 @@ my %concept2id = (
 use constant	EXPERIMENT_ID	=>	'experiment_id';
 
 my %conceptDomain2id = (
-	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN()	=>	EXPERIMENT_ID(),
+	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME()	=>	EXPERIMENT_ID(),
 );
 
 use constant {
 	METADATA_COLLECTION	=>	'metadata',
 	PRIMARY_COLLECTION	=>	'primary',
-	EXTERNAL_COLLECTION	=>	'external',
 };
 
 use constant	ANALYSIS_ID	=>	'analysis_id';
@@ -408,10 +408,6 @@ use constant	ANALYSIS_ID	=>	'analysis_id';
 my %collection2id = (
 	METADATA_COLLECTION()	=>	ANALYSIS_ID(),
 	PRIMARY_COLLECTION()	=>	ANALYSIS_ID(),
-);
-
-my %collection2agg = (
-	PRIMARY_COLLECTION()	=>	'analyses',
 );
 
 use constant	ALL_IDS	=>	'_all';
@@ -425,9 +421,45 @@ use constant {
 	REGION_FEATURE_EXON	=>	'exon',
 	REGION_FEATURE_CDS	=>	'CDS',
 	REGION_FEATURE_SELENOCYSTEINE	=>	'Selenocysteine',
+	
+	REGION_FEATURE_REACTION	=>	'reaction',
+	REGION_FEATURE_PATHWAY	=>	'pathway',
+	REGION_FEATURE_NEIGHBOURING_REACTION	=>	'neighbouring_reaction',
+	REGION_FEATURE_INDIRECT_COMPLEX	=>	'indirect_complex',
+	REGION_FEATURE_DIRECT_COMPLEX	=>	'direct_complex',
 };
 
 use constant REGION_FEATURES => [ REGION_FEATURE_GENE , REGION_FEATURE_TRANSCRIPT, REGION_FEATURE_UTR, REGION_FEATURE_EXON, REGION_FEATURE_CDS, REGION_FEATURE_START_CODON, REGION_FEATURE_STOP_CODON ];
+
+use constant DEFAULT_QUERY_TYPES => [REGION_FEATURE_GENE,REGION_FEATURE_PATHWAY,REGION_FEATURE_REACTION];
+
+my @FEATURE_RANKING= (
+	REGION_FEATURE_GENE,
+	REGION_FEATURE_PATHWAY,
+	REGION_FEATURE_DIRECT_COMPLEX,
+	REGION_FEATURE_INDIRECT_COMPLEX,
+	REGION_FEATURE_TRANSCRIPT,
+	REGION_FEATURE_EXON,
+	REGION_FEATURE_REACTION,
+	REGION_FEATURE_NEIGHBOURING_REACTION,
+	REGION_FEATURE_START_CODON,
+	REGION_FEATURE_STOP_CODON,
+	REGION_FEATURE_SELENOCYSTEINE,
+	REGION_FEATURE_UTR,
+	REGION_FEATURE_CDS,
+);
+
+my %FEATURE_RANKING_HASH = ();
+
+{
+
+	my $iFeat = 0;
+	foreach my $feat (@FEATURE_RANKING) {
+		$iFeat++;
+		$FEATURE_RANKING_HASH{$feat} = $iFeat;
+	}
+
+}
 
 sub getSampleTrackingData(;$) {
 	my $self = shift;
@@ -441,7 +473,7 @@ sub getSampleTrackingData(;$) {
 	
 	# Getting the correspondence from concepts to collections, so the queries can be issued
 	my @concepts = ();
-	foreach my $conceptDomainName ((SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN(),LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN())) {
+	foreach my $conceptDomainName ((SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME(),LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME())) {
 		
 		if(exists($dbModel->{'domains'}{$conceptDomainName})) {
 			my $conceptDomain = $model->getConceptDomain($conceptDomainName);
@@ -561,7 +593,7 @@ sub getDonors(;$$) {
 	
 	my($donor_id,$onlyIds) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,DONOR_CONCEPT,$donor_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,DONOR_CONCEPT_NAME,$donor_id,$onlyIds);
 }
 
 sub getSpecimens(;$$) {
@@ -571,7 +603,7 @@ sub getSpecimens(;$$) {
 	
 	my($specimen_id,$onlyIds) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,SPECIMEN_CONCEPT,$specimen_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds);
 }
 
 sub getSamples(;$$) {
@@ -581,7 +613,7 @@ sub getSamples(;$$) {
 	
 	my($sample_id,$onlyIds) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN,SAMPLE_CONCEPT,$sample_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds);
 }
 
 sub getExperiments(;$$) {
@@ -591,7 +623,7 @@ sub getExperiments(;$$) {
 	
 	my($experiment_id,$onlyIds) = @_;
 	
-	return $self->_getFromConcept(LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN,undef,$experiment_id,$onlyIds);
+	return $self->_getFromConcept(LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME,undef,$experiment_id,$onlyIds);
 }
 
 sub _getFromCollection($;$$) {
@@ -834,6 +866,9 @@ sub getDataFromCoords($$$) {
 	
 	my($chromosome,$chromosome_start,$chromosome_end) = @_;
 	
+	# Mitochondrial chromosome name normalization
+	$chromosome = 'MT'  if($chromosome eq 'M');
+	
 	my $rangeData = {
 		'range'	=>	[
 			{
@@ -907,6 +942,9 @@ sub getDataCountFromCoords($$$) {
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
 	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	# Mitochondrial chromosome name normalization
+	$chromosome = 'MT'  if($chromosome eq 'M');
 	
 	my $rangeData = {
 		'range'	=>	[
@@ -1127,6 +1165,9 @@ sub getDataStatsFromCoords($$$) {
 	
 	my($chromosome,$chromosome_start,$chromosome_end) = @_;
 	
+	# Mitochondrial chromosome name normalization
+	$chromosome = 'MT'  if($chromosome eq 'M');
+	
 	my $rangeData = {
 		'range'	=>	[
 			{
@@ -1147,8 +1188,8 @@ sub getGenomicLayout($) {
 	
 	my($rangeData) = @_;
 	
-	my $conceptDomainName = EXTERNAL_COLLECTION();
-	my $conceptName = FEATURES_CONCEPT();
+	my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME();
+	my $conceptName = FEATURES_CONCEPT_NAME();
 	my $prefix = 'coordinates';
 	
 	my $model = $self->{model};
@@ -1196,6 +1237,202 @@ sub getGenomicLayout($) {
 						
 						push(@dataArr,$data);
 					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub queryFeatures($) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($queryString) = @_;
+	
+	my $queryTypes = DEFAULT_QUERY_TYPES;
+	my $query = $queryString;
+	if($queryString =~ /^([^:]+):(.*)/) {
+		my $queryType = $1;
+		
+		if(exists($FEATURE_RANKING_HASH{$queryType})) {
+			
+			$queryTypes = [ $queryType ];
+			$query = $2;
+		}
+	}
+	
+	my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME;
+	my $conceptName = FEATURES_CONCEPT_NAME;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'domains'}{$conceptDomainName})) {
+		my $conceptDomain = $model->getConceptDomain($conceptDomainName);
+		
+		if(defined($conceptDomain)) {
+			my $concept = $conceptDomain->conceptHash()->{$conceptName};
+			
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'must'	=>	[
+									{
+										'terms'	=>	{
+											'feature'	=>	$queryTypes
+										}
+									},
+									{
+										'bool'	=>	{
+											'should'	=>	[
+												{
+													'term'	=>	{
+														'feature_id'	=>	$query
+													}
+												},
+												{
+													'nested'	=>	{
+														'path'	=>	"symbol",
+														'filter'	=>	{
+															'term'	=>	{
+																"symbol.value"	=>	$query
+															}
+														}
+													}
+												},
+												#{
+												#	'nested'	=>	{
+												#		'path'	=>	"symbol",
+												#		'query'	=>	{
+												#			'match'	=>	{
+												#				"symbol.value"	=>	$query
+												#			}
+												#		}
+												#	}
+												#},
+												{
+													'query'	=>	{
+														'match'	=>	{
+															'keyword'	=>	$query 
+														}
+													}
+												}
+											]
+										}
+									}
+								]
+							}
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scroll = $mapper->queryConcept($concept,$query_body);
+			
+			my @matches = ();
+			until($scroll->is_finished) {
+				$scroll->refill_buffer();
+				my @docs = $scroll->drain_buffer();
+				
+				if(scalar(@docs) > 0) {
+					$retval = \@matches;
+					foreach my $doc (@docs) {
+						my $data = $doc->{_source};
+						$data->{_type} = $doc->{_type};
+						
+						push(@matches,$data);
+					}
+				}
+			}
+		}
+	}
+	
+	return $retval;
+}
+
+sub suggestFeatures($) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($queryString) = @_;
+	
+	
+	my $queryType = undef;
+	my $query = $queryString;
+	if($queryString =~ /^([^:]+):(.*)/) {
+		$queryType = lc($1);
+		$query = $2;
+		$query = undef  unless(exists($FEATURE_RANKING_HASH{$queryType}));
+	}
+	
+	my $retval = undef;
+	if(defined($query)) {
+		# THIS IS VERY IMPORTANT. OTHERWISE, PREFIX SEARCH WON'T WORK!!!!
+		$query = lc($query);
+		
+		my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME;
+		my $conceptName = FEATURES_CONCEPT_NAME;
+		
+		my $model = $self->{model};
+		my $dbModel = $self->getModelFromDomain();
+		if(exists($dbModel->{'domains'}{$conceptDomainName})) {
+			my $conceptDomain = $model->getConceptDomain($conceptDomainName);
+			
+			if(defined($conceptDomain)) {
+				my $concept = $conceptDomain->conceptHash()->{$conceptName};
+				
+				my $theFilter = {
+					'prefix'	=>	{
+						'keyword'	=>	$query
+					}
+				};
+				if(defined($queryType)) {
+					$theFilter = {
+						'bool'	=>	{
+							'must'	=>	[
+								{
+									'term'	=>	{
+										'feature'	=>	$queryType
+									}
+								},
+								$theFilter
+							]
+						}
+					};
+				}
+				
+				my $query_body = {
+					'query'	=>	{
+						'filtered'	=>	{
+							'query'	=>	{
+								'match_all'	=>	{},
+							},
+							'filter'	=>	$theFilter
+						}
+					}
+				};
+				
+				my $mapper = $self->{mapper};
+				
+				my $results = $mapper->immediateQueryConcept($concept,$query_body);
+				
+				if(exists($results->{'hits'}) && exists($results->{'hits'}{'hits'}) && scalar(@{$results->{'hits'}{'hits'}}) > 0) {
+					my @matches = ();
+					foreach my $hit (@{$results->{'hits'}{'hits'}}) {
+						my $data = $hit->{_source};
+						$data->{_type} = $hit->{_type};
+						
+						push(@matches,$data);
+					}
+					$retval = \@matches;
 				}
 			}
 		}

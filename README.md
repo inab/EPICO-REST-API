@@ -66,5 +66,6 @@ Endpoints
 * GET /:domain/genomic_layout/:chromosome/:chromosome_start/:chromosome_end
 * GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
 
-/:domain/features?query=
-/:domain/features/suggest?query=
+* GET /:domain/features?q=	It returns the features, their types and their coordinates matching the input query (which can be an identifier, for instance)
+
+* GET /:domain/features/suggest?q=	It returns the features suggested by the input prefix query (useful for autocompletion)

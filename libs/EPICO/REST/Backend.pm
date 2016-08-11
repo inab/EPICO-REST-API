@@ -125,4 +125,12 @@ sub getDataStatsFromCoords($$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
+sub queryFeatures($) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub suggestFeatures($) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
 1;
