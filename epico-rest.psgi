@@ -344,7 +344,6 @@ sub getFilteredCVterms() {
 		print STDERR "ERROR: $@\n";
 	}
 	
-	
 	if(defined($domainInstance)) {
 		my $p_theTerms = request->data;
 		
@@ -824,18 +823,37 @@ sub suggestFeatures() {
 	}
 }
 
+sub preflight {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	return undef;
+}
+
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
 	get '/model'	=>	\&getModel;
 	prefix '/model/CV' => sub {
 		get ''	=>	\&getAvailableCVs;
 		post '/terms'	=>	\&getFilteredCVterms;
+		options '/terms'	=>	\&preflight;
 		get '/:cv_id'	=>	\&getCV;
 		get '/:cv_id/terms'	=>	\&getCVterms;
 		post '/:cv_id/terms'	=>	\&getCVterms;
+		options '/:cv_id/terms'	=>	\&preflight;
 		get '/:conceptDomainName/:conceptName/:columnName'	=>	\&getCVsFromColumn;
 		get '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
 		post '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
+		options '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&preflight;
 	};
 	prefix '/sdata' => sub {
 		get ''	=>	\&getSampleTrackingDataIds;
@@ -882,7 +900,7 @@ package main;
 use Plack::Builder;
 builder {
 # Enabling this we get some issues, so disabled for now
+	enable 'CrossOrigin', origins => '*', headers => '*';
 	enable 'Deflater', content_type => ['text/plain','text/css','text/html','text/javascript','application/javascript','application/json'];
-	enable 'CrossOrigin', origins => '*';
 	mount '/'    => EPICO::REST::API->to_app;
 };
