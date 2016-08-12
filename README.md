@@ -57,6 +57,11 @@ Endpoints
 * GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end
 * GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
 
+* GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/stream
+* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stream	It returns a handler to fetch results chunk by chunk
+
+* POST /:domain/analysis/data/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
+
 * GET /:domain/analysis/data/:chromosome/:chromosome_start/:chromosome_end/count
 * GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/count	It counts the number of related results per analysis
 

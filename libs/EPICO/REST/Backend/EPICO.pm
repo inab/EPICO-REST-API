@@ -882,6 +882,150 @@ sub getDataFromCoords($$$) {
 	return $self->_getDataFromCollection(PRIMARY_COLLECTION,$rangeData);
 }
 
+sub _getDataStreamFromCollection($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$rangeData) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $shouldQuery = $self->_genShouldQuery($rangeData);
+			my $query_body = {
+				'query'	=>	{
+					'filtered'	=>	{
+						'filter'	=>	{
+							'bool'	=>	{
+								'should'	=>	$shouldQuery
+							}
+						}
+					}
+				}
+			};
+			
+			my $mapper = $self->{mapper};
+			
+			my $scrollRes = $mapper->immediateQueryCollection($collection,$query_body,undef,undef,{'scroll' => '60s'});
+			
+			if(exists($scrollRes->{'_scroll_id'})) {
+				$retval = {
+					'_stream_id'	=>	$scrollRes->{'_scroll_id'},
+					'total'	=>	$scrollRes->{'hits'}{'total'},
+				};
+			}
+			
+			#my @dataArr = ();
+			#until($scroll->is_finished) {
+			#	$scroll->refill_buffer();
+			#	my @docs = $scroll->drain_buffer();
+			#	
+			#	if(scalar(@docs) > 0) {
+			#		$retval = \@dataArr;
+			#		foreach my $doc (@docs) {
+			#			my $data = $doc->{_source};
+			#			$data->{_type} = $doc->{_type};
+			#			
+			#			push(@dataArr,$data);
+			#		}
+			#	}
+			#}
+		}
+	}
+	
+	return $retval;
+}
+
+sub getDataStreamFromCoords($$$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($chromosome,$chromosome_start,$chromosome_end) = @_;
+	
+	# Mitochondrial chromosome name normalization
+	$chromosome = 'MT'  if($chromosome eq 'M');
+	
+	my $rangeData = {
+		'range'	=>	[
+			{
+				'chr'	=>	$chromosome,
+				'start'	=>	$chromosome_start,
+				'end'	=>	$chromosome_end
+			}
+		]
+	};
+	
+	return $self->_getDataStreamFromCollection(PRIMARY_COLLECTION,$rangeData);
+}
+
+sub _fetchDataStreamFromCollection($\%) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($collectionName,$p_scroll) = @_;
+	
+	my $model = $self->{model};
+	my $dbModel = $self->getModelFromDomain();
+	my $retval = undef;
+	if(exists($p_scroll->{'_stream_id'}) && exists($dbModel->{'collections'}{$collectionName})) {
+		my $collection = $model->getCollection($collectionName);
+		
+		if(defined($collection)) {
+			my $mapper = $self->{mapper};
+			
+			my $es = $mapper->connect();
+			
+			eval {
+				# Low level API :-/
+				my $scrollRes = $es->scroll('scroll_id' => $p_scroll->{'_stream_id'},'scroll' => '60s');
+				#my $scrollRes = $mapper->immediateQueryCollection($collection,{},undef,undef,{'scroll_id' => $p_scroll->{'_stream_id'},'scroll' => '60s'});
+				
+				#my $JA;
+				#open($JA,'>:encoding(UTF-8)','/tmp/mirame.txt');
+				#use Data::Dumper;
+				#print $JA Dumper($scrollRes),"\n";
+				#close($JA);
+				
+				if(exists($scrollRes->{'_scroll_id'})) {
+					if(exists($scrollRes->{'hits'}{'hits'}) && scalar(@{$scrollRes->{'hits'}{'hits'}}) > 0) {
+						my @dataArr = ();
+						$retval = \@dataArr;
+						foreach my $doc (@{$scrollRes->{'hits'}{'hits'}}) {
+							my $data = $doc->{_source};
+							$data->{_type} = $doc->{_type};
+							
+							push(@dataArr,$data);
+						}
+					}
+				}
+			};
+			
+			#if($@) {
+			#	print STDERR $@,"\n";
+			#}
+		}
+	}
+	
+	return $retval;
+}
+
+sub fetchDataStream(\%) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($p_scroll) = @_;
+	
+	return $self->_fetchDataStreamFromCollection(PRIMARY_COLLECTION,$p_scroll);
+}
+
 sub _getDataCountFromCollection($$) {
 	my $self = shift;
 	

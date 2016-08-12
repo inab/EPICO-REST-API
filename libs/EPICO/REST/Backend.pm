@@ -93,6 +93,14 @@ sub getDataFromCoords($$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
+sub getDataStreamFromCoords($$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub fetchDataStream(\%) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
 sub getGenomicLayout($) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }

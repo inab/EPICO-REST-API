@@ -678,6 +678,63 @@ sub getDataFromCoordsAlt() {
 	return getDataFromCoordsCommon(splat);
 }
 
+sub getDataStreamFromCoordsCommon(@) {
+	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getDataStreamFromCoords($chromosome,$chromosome_start,$chromosome_end);
+	} else {
+		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+	}
+}
+
+sub getDataStreamFromCoords() {
+	return getDataStreamFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+}
+
+
+sub getDataStreamFromCoordsAlt() {
+	return getDataStreamFromCoordsCommon(splat);
+}
+
+sub fetchDataStream() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $p_scroll = request->data;
+		
+		send_error("Expected a hash defining the stream",400)  unless(ref($p_scroll) eq 'HASH');
+		
+		my $retval = $domainInstance->fetchDataStream($p_scroll);
+		
+		send_error("Stream already closed or not found",404)  unless(defined($retval));
+		
+		return $retval;
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
 sub getDataCountFromCoordsCommon(@) {
 	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
@@ -881,6 +938,11 @@ prefix '/:domain_id' => sub {
 		get '/:chromosome/:chromosome_start/:chromosome_end/count'	=>	\&getDataCountFromCoords;
 		# As Dancer2 fails on this, we have to setup a full route for it
 		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
+		get '/:chromosome/:chromosome_start/:chromosome_end/stream'	=>	\&getDataStreamFromCoords;
+		# As Dancer2 fails on this, we have to setup a full route for it
+		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataStreamFromCoordsAlt;
+		post '/fetchStream'	=>	\&fetchDataStream;
+		options '/fetchStream'	=>	\&preflight;
 	};
 	prefix '/genomic_layout' => sub {
 		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getGenomicLayoutFromCoords;
@@ -892,6 +954,7 @@ prefix '/:domain_id' => sub {
 };
 get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
 get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
+get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stream}	=>	\&getDataStreamFromCoordsAlt;
 get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
 get qr{/([^/]+)/genomic_layout/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
 
