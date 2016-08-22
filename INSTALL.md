@@ -13,13 +13,13 @@ The detailed dependencies are:
 * Plack::Middleware::CrossOrigin
 * Plack::Middleware::Deflater
 * FCGI	(needed by Plack::Handler::FCGI)
-* BP-Schema-tools
-* A web server with a proper setup.
+* BP-Schema-tools dependencies.
+* A web server, like Apache, with a proper setup.
 
 ## Deployment
 1. Check you have installed gcc, cpan, the development version of Perl.
 
-2. Create a separate user (for instance, `epico-rest`) for the API, with a separate group
+2. Create a separate user (for instance, `epico-rest` with group `epico-rest`) for the API, with a separate group
 
 	```bash
 	useradd -m -U -c 'EPICO REST API unprivileged user' epico-rest
@@ -33,35 +33,141 @@ The detailed dependencies are:
 	git clone --recurse-submodules https://github.com/inab/EPICO-REST-API.git
 	cd EPICO-REST-API
 	```
+	
+	and install the dependencies defined above.
 
-5. Create directory `DOCUMENT_ROOT`, and copy next content there:
+5. Put the profile configurations in `config` subdirectory. Each one of these files must contain the database connection parameters, database backend, etc... as defined for [https://github.com/inab/EPICO-data-loading-scripts/tree/develop](EPICO data loading scripts), as well as `epico-api` section:
+
+	```
+	[epico-api]
+	name=BLUEPRINT Release 2016-08
+	release=2016-08
+	backend=EPICO
+	```
+	
+	which defines the backend to be used (currently, only [https://github.com/inab/EPICO-REST-API/blob/master/libs/EPICO/REST/Backend/EPICO.pm](EPICO) one), the name used to publish this domain through the API, and the release. There cannot be two configuration files with the same `backend` and `release` parameters, as both of them are used to build the domain unique identifier.
+
+6. Create an installation directory (for instance, `/home/epico-rest/EPICO-REST-API`), and copy at least next content there:
 
 	```bash
-	mkdir -p "${HOME}"/DOCUMENT_ROOT/cgi-bin
-	cp -dpr epico-rest epico-rest.psgi libs BP-Schema-tools config "${HOME}"/DOCUMENT_ROOT/cgi-bin
+	mkdir -p "${HOME}"/EPICO-REST-API
+	cp -dpr epico-rest.cgi epico-rest.fcgi epico-rest.psgi libs BP-Schema-tools config "${HOME}"/EPICO-REST-API
 	```
 
-6. You have to put inside `config` subdirectory the configuration files corresponding to the different enabled domains.
+## Apache Web server setup with a virtual host (in CentOS and Ubuntu)
 
-## Web server setup with a virtual host (in CentOS)
-
-1. You have to install Apache and [http://mpm-itk.sesse.net/](MPM ITK):
+1. You have to install and setup Apache:
 	
 	```bash
-	yum install -y httpd httpd-itk
+	# This is for CentOS
+	yum install -y httpd
+	```
+	
+	```bash
+	# This is for Ubuntu
+	apt-get install apache2
 	```
 
-2. Now, we switch on MPM ITK *without switching off* MPM prefork:
-
+2. If you are going to use `epico-rest.cgi`, you optionally have to install [http://mpm-itk.sesse.net/](MPM ITK) and enable it *without switching off* MPM prefork, in order to run it as the user you have created:
+	
 	```bash
+	# This is for CentOS
+	yum install -y httpd-itk
 	sed -i 's/^#\(LoadModule \)/\1/' /etc/httpd/conf.modules.d/00-mpm-itk.conf
 	```
-
-3. As CentOS does not come with the virtual hosts infrastructure for Apache, we have to create it, and include its usage in the configuration file:
-
+	
 	```bash
-	mkdir -p /etc/httpd/sites-available /etc/httpd/sites-enabled
-	echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
+	# This is for Ubuntu
+	apt-get install libapache2-mpm-itk
+	a2enmod mpm_itk
+	```
+	
+	Next, you have to enable `cgi` module:
+	
+	```bash
+	# This is for Ubuntu
+	a2enmod cgi
+	```
+	
+	You have to put next Apache configuration block inside de virtualhost definition, in order to enable the API handler at /epico-api:
+	
+	```
+	<IfModule mpm_itk_module>
+		AssignUserId epico-rest epico-rest
+	</IfModule>
+	
+	# This line is needed if you locally installed the Perl modules needed
+	SetEnv PERL5LIB /home/epico-rest/perl5/lib/perl5
+	
+	ScriptAlias "/epico-api" "/home/epico-rest/EPICO-REST-API/epico-rest.cgi"
+	<Directory /home/epico-rest/EPICO-REST-API>
+		AllowOverride None
+		SetHandler cgi-script
+		Options ExecCGI SymLinksIfOwnerMatch
+		
+		# These sentences are for Apache 2.2 and Apache 2.4 with mod_access_compat enabled
+		<IfModule !mod_authz_core.c>
+			Order allow,deny
+			Allow from all
+		</IfModule>
+		
+		# This sentence is for Apache 2.4 without mod_access_compat
+		<IfModule mod_authz_core.c>
+			Require all granted
+		</IfModule>
+	</Directory>
+	```
+	
+3. If you are going to use `epico-rest.fcgi` you have to install [https://httpd.apache.org/mod_fcgid/mod/mod_fcgid.html](mod_fcgid):
+
+	
+	```bash
+	# This is for CentOS
+	yum install -y mod_fcgid
+	```
+	
+	```bash
+	# This is for Ubuntu
+	apt-get install libapache2-mod-fcgid
+	a2enmod fcgid
+	```
+	
+	You optionally have to install [https://httpd.apache.org/docs/2.4/mod/mod_suexec.html](mod_suexec), if you want the FCGI run as `epico-rest`
+	
+	```bash
+	# This is for Ubuntu
+	apt-get install apache2-suexec
+	a2enmod suexec
 	```
 
-4. Copy configuration file apache/RD-Connect.conf to `/etc/httpd/sites-enabled`
+	You have to put next Apache configuration block inside de virtualhost definition, in order to enable the API handler at /epico-api:
+	
+	```
+	<IfModule mod_suexec>
+		SuexecUserGroup epico-rest epico-rest
+	</IfModule>
+	
+	
+	FcgidIOTimeout 300
+	FcgidMaxRequestLen 104857600
+	# This line is needed if you locally installed the Perl modules needed
+	FcgidInitialEnv PERL5LIB /home/epico-rest/perl5/lib/perl5
+	
+	ScriptAlias "/epico-api" "/home/epico-rest/EPICO-REST-API/epico-rest.fcgi"
+	<Directory /home/epico-rest/EPICO-REST-API>
+		AllowOverride None
+		SetHandler fcgid-script
+		Options ExecCGI SymLinksIfOwnerMatch
+		
+		# These sentences are for Apache 2.2 and Apache 2.4 with mod_access_compat enabled
+		<IfModule !mod_authz_core.c>
+			Order allow,deny
+			Allow from all
+		</IfModule>
+		
+		# This sentence is for Apache 2.4 without mod_access_compat
+		<IfModule mod_authz_core.c>
+			Require all granted
+		</IfModule>
+	</Directory>
+	```
