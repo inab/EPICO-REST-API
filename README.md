@@ -68,6 +68,26 @@ Endpoints
 * GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stats
 * GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stats	It gives detailed stats	(only for BLUEPRINT)
 
+* POST /{domain}/analysis/query/gene_expression/byDonors
+* POST /{domain}/analysis/query/gene_expression/byDonors/table
+
+* POST /{domain}/analysis/query/gene_expression/byDonors/matrix
+
+* POST /{domain}/analysis/query/gene_expression/bySamples
+* POST /{domain}/analysis/query/gene_expression/bySamples/table
+
+* POST /{domain}/analysis/query/gene_expression/bySamples/matrix
+
+* POST /{domain}/analysis/query/gene_expression/byExperiments
+* POST /{domain}/analysis/query/gene_expression/byExperiments/table
+
+* POST /{domain}/analysis/query/gene_expression/byExperiments/matrix
+
+* POST /{domain}/analysis/query/gene_expression/byAnalyses
+* POST /{domain}/analysis/query/gene_expression/byAnalyses/table
+
+* POST /{domain}/analysis/query/gene_expression/byAnalyses/matrix
+
 * GET /{domain}/genomic_layout/{chromosome}/{chromosome_start}/{chromosome_end}
 * GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
 

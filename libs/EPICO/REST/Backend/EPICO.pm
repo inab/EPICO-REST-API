@@ -518,14 +518,23 @@ sub getSampleTrackingData(;$) {
 	return $retval;
 }
 
-sub _getFromConcept($$;$$) {
+# Input parameters:
+#	conceptDomainName: The concept domain name
+#	conceptName: The concept name (which can be undef)
+#	key_id: If defined, fetch the subset of concept instances matching these concept ids
+#	onlyIds: If true, return only the concept instance ids
+#	attr_name: If defined, match key_id against this attribute, instead of the concept id
+sub _getFromConcept($$;$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($conceptDomainName, $conceptName,$key_id,$onlyIds) = @_;
+	my($conceptDomainName, $conceptName,$key_id,$onlyIds,$attr_name) = @_;
 	
-	$key_id = undef  if(defined($key_id) && $key_id eq ALL_IDS());
+	my $termQuery = undef;
+	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
+		$termQuery = ref($key_id) ? 'terms':'term';
+	}
 	
 	my $model = $self->{model};
 	my $dbModel = $self->getModelFromDomain();
@@ -544,8 +553,9 @@ sub _getFromConcept($$;$$) {
 				$concept = $conceptDomain->concepts();
 				$key_name = $conceptDomain2id{$conceptDomainName};
 			}
+			$attr_name = $key_name  unless(defined($attr_name));
 			
-			my $query_body = defined($key_id) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { "term" => { $key_name  => $key_id } } } } } : {};
+			my $query_body = defined($termQuery) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { $termQuery => { $attr_name  => $key_id } } } } } : {};
 			
 			my $mapper = $self->{mapper};
 			
@@ -557,7 +567,7 @@ sub _getFromConcept($$;$$) {
 				my @docs = $scroll->drain_buffer();
 				
 				if(scalar(@docs) > 0) {
-					if(defined($key_id)) {
+					if(defined($termQuery) && !ref($key_id)) {
 						my $doc = $docs[0];
 						$doc->{_source}{_type} = $doc->{_type};
 						$retval = $doc->{_source};
@@ -570,6 +580,7 @@ sub _getFromConcept($$;$$) {
 								$data = {
 									$key_name	=>	$doc->{_source}{$key_name}
 								};
+								$data->{$attr_name} = $doc->{_source}{$attr_name}  if($attr_name ne $key_name);
 							} else {
 								$data = $doc->{_source};
 							}
@@ -586,34 +597,34 @@ sub _getFromConcept($$;$$) {
 	return $retval;
 }
 
-sub getDonors(;$$) {
+sub getDonors(;$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($donor_id,$onlyIds) = @_;
+	my($donor_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,DONOR_CONCEPT_NAME,$donor_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,DONOR_CONCEPT_NAME,$donor_id,$onlyIds,$attr_name);
 }
 
-sub getSpecimens(;$$) {
+sub getSpecimens(;$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($specimen_id,$onlyIds) = @_;
+	my($specimen_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds,$attr_name);
 }
 
-sub getSamples(;$$) {
+sub getSamples(;$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($sample_id,$onlyIds) = @_;
+	my($sample_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds);
+	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds,$attr_name);
 }
 
 sub getExperiments(;$$) {
@@ -626,14 +637,22 @@ sub getExperiments(;$$) {
 	return $self->_getFromConcept(LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME,undef,$experiment_id,$onlyIds);
 }
 
-sub _getFromCollection($;$$) {
+# Input parameters:
+#	collectionName: The collection name
+#	key_id: If defined, fetch the subset of concept instances on the input collection matching these concept ids
+#	onlyIds: If true, return only the concept instance ids
+#	attr_name: If defined, match key_id against this attribute, instead of the concept id
+sub _getFromCollection($;$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($collectionName,$key_id,$onlyIds) = @_;
+	my($collectionName,$key_id,$onlyIds,$attr_name) = @_;
 	
-	$key_id = undef  if(defined($key_id) && $key_id eq ALL_IDS());
+	my $termQuery = undef;
+	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
+		$termQuery = ref($key_id) ? 'terms':'term';
+	}
 	
 	my $model = $self->{model};
 	my $dbModel = $self->getModelFromDomain();
@@ -643,8 +662,9 @@ sub _getFromCollection($;$$) {
 		
 		if(defined($collection)) {
 			my $key_name = $collection2id{$collectionName};
+			$attr_name = $key_name  unless(defined($attr_name));
 			
-			my $query_body = defined($key_id) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { "term" => { $key_name  => $key_id } } } } } : {};
+			my $query_body = defined($termQuery) ? { "query" => { "filtered" => { "query" => { "match_all" => {} }, "filter" => { $termQuery => { $attr_name  => $key_id } } } } } : {};
 			
 			my $mapper = $self->{mapper};
 			
@@ -656,7 +676,7 @@ sub _getFromCollection($;$$) {
 				my @docs = $scroll->drain_buffer();
 				
 				if(scalar(@docs) > 0) {
-					if(defined($key_id)) {
+					if(defined($termQuery) && !ref($key_id)) {
 						my $doc = $docs[0];
 						$doc->{_source}{_type} = $doc->{_type};
 						$retval = $doc->{_source};
@@ -669,6 +689,7 @@ sub _getFromCollection($;$$) {
 								$data = {
 									$key_name	=>	$doc->{_source}{$key_name}
 								};
+								$data->{$attr_name} = $doc->{_source}{$attr_name}  if($attr_name ne $key_name);
 							} else {
 								$data = $doc->{_source};
 							}
@@ -693,6 +714,97 @@ sub getAnalysisMetadata(;$$) {
 	my($analysis_id,$onlyIds) = @_;
 	
 	return $self->_getFromCollection(METADATA_COLLECTION,$analysis_id,$onlyIds);
+}
+
+sub _ChooseLabelFromSymbols($) {
+	my($p_symbols) = @_;
+	
+	# Getting a understandable label
+	my $featureSymbol = $p_symbols->[0];
+	my $descSymbol;
+	
+	my $gotIt;
+	foreach my $symbol (@{$p_symbols}) {
+		if($symbol->{'domain'} eq 'description') {
+			$descSymbol = $symbol;
+		} elsif($symbol->{'domain'} eq 'HGNC') {
+			$featureSymbol = $symbol;
+			$gotIt = 1;
+			last;
+		}
+	}
+	
+	if(!$gotIt && defined($descSymbol)) {
+		$featureSymbol = $descSymbol;
+	}
+	
+	# Default case for the label
+	return $featureSymbol->{'value'}[0];
+}
+
+sub getGeneExpressionFromCompoundAnalysisIds(\@) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($compound_analysis_ids) = @_;
+	
+	# Using this hash to store the analysis_id <=> compound_analysis_id correspondence
+	my %analysis_ids = map { ( ref($_) eq 'ARRAY'? $_->[-1] : $_ ) => $_ } @{$compound_analysis_ids};
+	my @analysis_ids_keys = keys(%analysis_ids);
+	
+	my $p_res = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys);
+	
+	my %exprAnalyses = ();
+	
+	# Filling the resulting structure
+	my %geneIdLookup = ();
+	foreach my $res (@{$p_res}) {
+		if(exists($res->{'FPKM'})) {
+			my $analysis_id = $res->{'analysis_id'};
+			
+			unless(exists($exprAnalyses{$analysis_id})) {
+				$exprAnalyses{$analysis_id} = {
+					# The compound analysis id
+					'id'	=>	$analysis_ids{$analysis_id},
+					'data'	=>	[]
+				};
+			}
+			
+			my $p_expr_analysis = $exprAnalyses{$analysis_id};
+			my $gene_id = $res->{'gene_stable_id'};
+			if(defined($gene_id)) {
+				$geneIdLookup{$gene_id} = $gene_id  unless(exists($geneIdLookup{$gene_id}));
+			} else {
+				$gene_id = $res->{'chromosome'} . ':' . $res->{'chromosome_start'} . '-' . $res->{'chromosome_end'};
+			}
+			
+			push(@{$p_expr_analysis->{'data'}},[$gene_id,'',$res->{'FPKM'}]);
+		}
+	}
+	
+	# Adding the gene names to the result after querying the database
+	my @geneIds = keys(%geneIdLookup);
+	
+	my $p_geneNames = $self->_queryFeaturesInternal([REGION_FEATURE_GENE],\@geneIds);
+	
+	foreach my $p_geneName (@{$p_geneNames}) {
+		my $geneId = $p_geneName->{'feature_id'};
+		
+		$geneIdLookup{$geneId} = _ChooseLabelFromSymbols($p_geneName->{'symbol'})  if(exists($geneIdLookup{$geneId}));
+	}
+	
+	# Last, return it augmented!
+	my @retExpr = values(%exprAnalyses);
+	foreach my $p_expr_analysis (@retExpr) {
+		foreach my $exprData (@{$p_expr_analysis->{'data'}}) {
+			my $geneId = $exprData->[0];
+			$exprData->[1] = $geneIdLookup{$geneId}  if(exists($geneIdLookup{$geneId}));
+		}
+	}
+
+	
+	return \@retExpr;
 }
 
 
@@ -1408,6 +1520,18 @@ sub queryFeatures($) {
 		}
 	}
 	
+	return $self->_queryFeaturesInternal($queryTypes,$query);
+}
+	
+sub _queryFeaturesInternal(\@$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($queryTypes,$query) = @_;
+	
+	my $termQuery = ref($query) ? 'terms':'term';
+	
 	my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME;
 	my $conceptName = FEATURES_CONCEPT_NAME;
 	
@@ -1420,6 +1544,34 @@ sub queryFeatures($) {
 		if(defined($conceptDomain)) {
 			my $concept = $conceptDomain->conceptHash()->{$conceptName};
 			
+			my $should_body = 	[
+				{
+					$termQuery	=>	{
+						'feature_id'	=>	$query
+					}
+				},
+				{
+					'nested'	=>	{
+						'path'	=>	"symbol",
+						'filter'	=>	{
+							$termQuery	=>	{
+								"symbol.value"	=>	$query
+							}
+						}
+					}
+				},
+				#{
+				#	'nested'	=>	{
+				#		'path'	=>	"symbol",
+				#		'query'	=>	{
+				#			'match'	=>	{
+				#				"symbol.value"	=>	$query
+				#			}
+				#		}
+				#	}
+				#},
+			];
+
 			my $query_body = {
 				'query'	=>	{
 					'filtered'	=>	{
@@ -1433,40 +1585,7 @@ sub queryFeatures($) {
 									},
 									{
 										'bool'	=>	{
-											'should'	=>	[
-												{
-													'term'	=>	{
-														'feature_id'	=>	$query
-													}
-												},
-												{
-													'nested'	=>	{
-														'path'	=>	"symbol",
-														'filter'	=>	{
-															'term'	=>	{
-																"symbol.value"	=>	$query
-															}
-														}
-													}
-												},
-												#{
-												#	'nested'	=>	{
-												#		'path'	=>	"symbol",
-												#		'query'	=>	{
-												#			'match'	=>	{
-												#				"symbol.value"	=>	$query
-												#			}
-												#		}
-												#	}
-												#},
-												{
-													'query'	=>	{
-														'match'	=>	{
-															'keyword'	=>	$query 
-														}
-													}
-												}
-											]
+											'should'	=>	$should_body
 										}
 									}
 								]
@@ -1476,7 +1595,20 @@ sub queryFeatures($) {
 				}
 			};
 			
-			my $mapper = $self->{mapper};
+			# Do expensive match searches only on single keyword matches
+			unless(ref($query)) {
+				my $match_body = {
+					'query'	=>	{
+						'match'	=>	{
+							'keyword'	=>	$query 
+						}
+					}
+				};
+				
+				push(@{$should_body},$match_body);
+			}
+
+			my $mapper = $self->{'mapper'};
 			
 			my $scroll = $mapper->queryConcept($concept,$query_body);
 			

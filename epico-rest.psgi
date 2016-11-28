@@ -896,6 +896,186 @@ sub preflight {
 	return undef;
 }
 
+# It takes as input a string, splitting it by lines and cleaning it up
+sub _inputDeserialize($) {
+	my($input) = @_;
+	
+	my @lines = map { my $a = $_ ; $a =~ s/^[ \t]+//; $a =~ s/[ \t]+$//; $a } split(/[\r\n]+/,$input);
+	
+	return \@lines;
+}
+
+# It expects a header name and an array of hashes
+# Each hash contains two keys: 'id' and 'data'
+# 'id' is a reference to an array of identifiers for the data
+# 'data' is a reference to a matrix (an array of arrays), of three columns
+# First column is the Ensembl gene id
+# Second column is the gene name
+# Third column is the expression value for the gene
+sub _tabSerialize($\@) {
+	my($headerName,$p_data) = @_;
+	
+	my @partialColumns = ('gene_id','gene_name','FPKM');
+	my $res = join("\t",'# '.$headerName,@partialColumns)."\n";
+	
+	foreach my $p_analysis (@{$p_data}) {
+		my $analysis_id = join(':',@{$p_analysis->{'id'}});
+		
+		my $lines = join("\n", map { join("\t",$analysis_id,$_->[0],$_->[1],$_->[2]) } @{$p_analysis->{'data'}});
+		
+		$res .= $lines ."\n";
+	}
+	
+	return $res;
+}
+
+# It expects a header name and an array of hashes
+# Each hash contains two keys: 'id' and 'data'
+# 'id' is a reference to an array of identifiers for the data
+# 'data' is a reference to a matrix (an array of arrays), of three columns
+# First column is the Ensembl gene id
+# Second column is the gene name
+# Third column is the expression value for the gene
+sub _matrixSerialize($\@) {
+	my($headerName,$p_data) = @_;
+	
+	# First pass, cluster the gene expressions
+	my $iAnal = 0;
+	my %geneIds = ();
+	foreach my $p_analysis (@{$p_data}) {
+		foreach my $p_geneExpr (@{$p_analysis->{'data'}}) {
+			my $gene_id = $p_geneExpr->[0];
+			
+			$geneIds{$gene_id} = {'gene_id' => $gene_id,'gene_name' => $p_geneExpr->[1], 'expr' => []}  unless(exists($geneIds{$gene_id}));
+			my $p_geneExprArr = $geneIds{$gene_id}{'expr'};
+			
+			# We save only the FPKM
+			push(@{$p_geneExprArr},[$iAnal,$p_geneExpr->[2]]);
+		}
+		
+		$iAnal++;
+	}
+	
+	# Second pass, sort by gene name
+	my @sortedGeneExprInstances = sort { $a->{'gene_name'} cmp $b->{'gene_name'} } values(%geneIds);
+	my $res = join("\t",'# gene_name','gene_id',map { join(':',@{$_->{'id'}}) } @{$p_data})."\n";
+	# Number of analysis
+	my $maxAnalIdx = scalar(@{$p_data});
+	
+	foreach my $p_geneExprInstance (@sortedGeneExprInstances) {
+		# First, the gene name and id
+		$res .= join("\t",$p_geneExprInstance->{'gene_name'},$p_geneExprInstance->{'gene_id'});
+		
+		# As we are storing a sparse matrix, we have to take care of the holes
+		my $nextAnalIdx = 0;
+		foreach my $p_GeneExprElem (@{$p_geneExprInstance->{'expr'}}) {
+			my($iAnalIdx,$FPKM) = @{$p_GeneExprElem};
+			
+			$res .= "NA\t" x ($iAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $iAnalIdx);
+			
+			$res .= $FPKM . "\t";
+			
+			$nextAnalIdx = $iAnalIdx + 1;
+		}
+		
+		# Corner case
+		$res .= "NA\t" x ($maxAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $maxAnalIdx);
+		$res .= "\n";
+	}
+	
+	return $res;
+}
+
+sub _getGeneExpressionByAnalysesCommon($$) {
+	my($p_dataMethod,$p_serializeMethod) = @_;
+	
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		my $content = request->content;
+		
+		# Cleaning up the input
+		my $p_deserialized_ids = _inputDeserialize($content);
+		my($idColumnName,$p_analysis_ids) = $p_dataMethod->($domainInstance,$p_deserialized_ids);
+		
+		my $p_data = $domainInstance->getGeneExpressionFromCompoundAnalysisIds($p_analysis_ids);
+		
+		my $data = $p_serializeMethod->($idColumnName,$p_data);
+		
+		return send_file(\$data,content_type => 'text/tab-separated-values', charset => 'utf-8');
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub _getAnalysisIdsFromAnalysisIds {
+		my($domainInstance,$p_deserialized_ids) = @_;
+		
+		my @analysis_ids = map { [ $_ ] } @{$p_deserialized_ids}; 
+		
+		return ('analysis_id',\@analysis_ids);
+}
+
+sub _getAnalysisIdsFromDonorIds {
+		my($domainInstance,$p_deserialized_ids) = @_;
+		
+		return ('donor_id',$p_deserialized_ids);
+}
+
+sub _getAnalysisIdsFromSampleIds {
+		my($domainInstance,$p_deserialized_ids) = @_;
+		
+		return ('sample_id',$p_deserialized_ids);
+}
+
+sub _getAnalysisIdsFromExperimentIds {
+		my($domainInstance,$p_deserialized_ids) = @_;
+		
+		return ('experiment_id',$p_deserialized_ids);
+}
+
+sub getGeneExpressionByAnalysesTab {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromAnalysisIds,\&_tabSerialize);
+}
+
+sub getGeneExpressionByAnalysesMatrix {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromAnalysisIds,\&_matrixSerialize);
+}
+
+sub getGeneExpressionByDonorsTab {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromDonorIds,\&_tabSerialize);
+}
+
+sub getGeneExpressionByDonorsMatrix {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromDonorIds,\&_matrixSerialize);
+}
+
+sub getGeneExpressionBySamplesTab {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromSampleIds,\&_tabSerialize);
+}
+
+sub getGeneExpressionBySamplesMatrix {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromSampleIds,\&_matrixSerialize);
+}
+
+sub getGeneExpressionByExperimentsTab {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromExperimentIds,\&_tabSerialize);
+}
+
+sub getGeneExpressionByExperimentsMatrix {
+	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromExperimentIds,\&_matrixSerialize);
+}
+
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
 	get '/model'	=>	\&getModel;
@@ -943,6 +1123,40 @@ prefix '/:domain_id' => sub {
 		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataStreamFromCoordsAlt;
 		post '/fetchStream'	=>	\&fetchDataStream;
 		options '/fetchStream'	=>	\&preflight;
+	};
+	prefix '/analysis/query/gene_expression' => sub {
+		prefix '/byDonors' => sub {
+			post ''	=>	\&getGeneExpressionByDonorsTab;
+			options ''	=>	\&preflight;
+			post '/table'	=>	\&getGeneExpressionByDonorsTab;
+			options '/table'	=>	\&preflight;
+			post '/matrix'	=>	\&getGeneExpressionByDonorsMatrix;
+			options '/matrix'	=>	\&preflight;
+		};
+		prefix '/bySamples' => sub {
+			post ''	=>	\&getGeneExpressionBySamplesTab;
+			options ''	=>	\&preflight;
+			post '/table'	=>	\&getGeneExpressionBySamplesTab;
+			options '/table'	=>	\&preflight;
+			post '/matrix'	=>	\&getGeneExpressionBySamplesMatrix;
+			options '/matrix'	=>	\&preflight;
+		};
+		prefix '/byExperiments' => sub {
+			post ''	=>	\&getGeneExpressionByExperimentsTab;
+			options ''	=>	\&preflight;
+			post '/table'	=>	\&getGeneExpressionByExperimentsTab;
+			options '/table'	=>	\&preflight;
+			post '/matrix'	=>	\&getGeneExpressionByExperimentsMatrix;
+			options '/matrix'	=>	\&preflight;
+		};
+		prefix '/byAnalyses' => sub {
+			post ''	=>	\&getGeneExpressionByAnalysesTab;
+			options ''	=>	\&preflight;
+			post '/table'	=>	\&getGeneExpressionByAnalysesTab;
+			options '/table'	=>	\&preflight;
+			post '/matrix'	=>	\&getGeneExpressionByAnalysesMatrix;
+			options '/matrix'	=>	\&preflight;
+		};
 	};
 	prefix '/genomic_layout' => sub {
 		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getGenomicLayoutFromCoords;
