@@ -896,11 +896,11 @@ sub preflight {
 	return undef;
 }
 
-# It takes as input a string, splitting it by lines and cleaning it up
+# It takes as input a string, splitting it by lines, cleaning them up, and returning them as "compound ids"
 sub _inputDeserialize($) {
 	my($input) = @_;
 	
-	my @lines = map { my $a = $_ ; $a =~ s/^[ \t]+//; $a =~ s/[ \t]+$//; $a } split(/[\r\n]+/,$input);
+	my @lines = map { my $a = $_ ; $a =~ s/^[ \t]+//; $a =~ s/[ \t]+$//; [ $a ] } split(/[\r\n]+/,$input);
 	
 	return \@lines;
 }
@@ -950,7 +950,11 @@ sub _matrixSerialize($\@) {
 			my $p_geneExprArr = $geneIds{$gene_id}{'expr'};
 			
 			# We save only the FPKM
-			push(@{$p_geneExprArr},[$iAnal,$p_geneExpr->[2]]);
+			if(scalar(@{$p_geneExprArr}) > 0 && $p_geneExprArr->[-1][0] eq $iAnal) {
+				push(@{$p_geneExprArr->[-1][1]},$p_geneExpr->[2]);
+			} else {
+				push(@{$p_geneExprArr},[$iAnal,[$p_geneExpr->[2]]]);
+			}
 		}
 		
 		$iAnal++;
@@ -969,17 +973,17 @@ sub _matrixSerialize($\@) {
 		# As we are storing a sparse matrix, we have to take care of the holes
 		my $nextAnalIdx = 0;
 		foreach my $p_GeneExprElem (@{$p_geneExprInstance->{'expr'}}) {
-			my($iAnalIdx,$FPKM) = @{$p_GeneExprElem};
+			my($iAnalIdx,$p_FPKM) = @{$p_GeneExprElem};
 			
-			$res .= "NA\t" x ($iAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $iAnalIdx);
+			$res .= "\tNA" x ($iAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $iAnalIdx);
 			
-			$res .= $FPKM . "\t";
+			$res .= "\t" . join(",",@{$p_FPKM});
 			
 			$nextAnalIdx = $iAnalIdx + 1;
 		}
 		
 		# Corner case
-		$res .= "NA\t" x ($maxAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $maxAnalIdx);
+		$res .= "\tNA" x ($maxAnalIdx - $nextAnalIdx)  if($nextAnalIdx != $maxAnalIdx);
 		$res .= "\n";
 	}
 	
@@ -987,7 +991,7 @@ sub _matrixSerialize($\@) {
 }
 
 sub _getGeneExpressionByAnalysesCommon($$) {
-	my($p_dataMethod,$p_serializeMethod) = @_;
+	my($dataMethodName,$p_serializeMethod) = @_;
 	
 	my $domain_id = params->{'domain_id'};
 	my $domainInstance = undef;
@@ -1006,9 +1010,10 @@ sub _getGeneExpressionByAnalysesCommon($$) {
 		
 		# Cleaning up the input
 		my $p_deserialized_ids = _inputDeserialize($content);
-		my($idColumnName,$p_analysis_ids) = $p_dataMethod->($domainInstance,$p_deserialized_ids);
 		
-		my $p_data = $domainInstance->getGeneExpressionFromCompoundAnalysisIds($p_analysis_ids);
+		my($idColumnName,$p_compound_analysis_ids) = $domainInstance->$dataMethodName($p_deserialized_ids);
+		
+		my $p_data = $domainInstance->getGeneExpressionFromCompoundAnalysisIds($p_compound_analysis_ids);
 		
 		my $data = $p_serializeMethod->($idColumnName,$p_data);
 		
@@ -1018,62 +1023,36 @@ sub _getGeneExpressionByAnalysesCommon($$) {
 	}
 }
 
-sub _getAnalysisIdsFromAnalysisIds {
-		my($domainInstance,$p_deserialized_ids) = @_;
-		
-		my @analysis_ids = map { [ $_ ] } @{$p_deserialized_ids}; 
-		
-		return ('analysis_id',\@analysis_ids);
-}
-
-sub _getAnalysisIdsFromDonorIds {
-		my($domainInstance,$p_deserialized_ids) = @_;
-		
-		return ('donor_id',$p_deserialized_ids);
-}
-
-sub _getAnalysisIdsFromSampleIds {
-		my($domainInstance,$p_deserialized_ids) = @_;
-		
-		return ('sample_id',$p_deserialized_ids);
-}
-
-sub _getAnalysisIdsFromExperimentIds {
-		my($domainInstance,$p_deserialized_ids) = @_;
-		
-		return ('experiment_id',$p_deserialized_ids);
-}
-
 sub getGeneExpressionByAnalysesTab {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromAnalysisIds,\&_tabSerialize);
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundAnalysisIds',\&_tabSerialize);
 }
 
 sub getGeneExpressionByAnalysesMatrix {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromAnalysisIds,\&_matrixSerialize);
-}
-
-sub getGeneExpressionByDonorsTab {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromDonorIds,\&_tabSerialize);
-}
-
-sub getGeneExpressionByDonorsMatrix {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromDonorIds,\&_matrixSerialize);
-}
-
-sub getGeneExpressionBySamplesTab {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromSampleIds,\&_tabSerialize);
-}
-
-sub getGeneExpressionBySamplesMatrix {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromSampleIds,\&_matrixSerialize);
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundAnalysisIds',\&_matrixSerialize);
 }
 
 sub getGeneExpressionByExperimentsTab {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromExperimentIds,\&_tabSerialize);
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundExperimentIds',\&_tabSerialize);
 }
 
 sub getGeneExpressionByExperimentsMatrix {
-	return _getGeneExpressionByAnalysesCommon(\&_getAnalysisIdsFromExperimentIds,\&_matrixSerialize);
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundExperimentIds',\&_matrixSerialize);
+}
+
+sub getGeneExpressionBySamplesTab {
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundSampleIds',\&_tabSerialize);
+}
+
+sub getGeneExpressionBySamplesMatrix {
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundSampleIds',\&_matrixSerialize);
+}
+
+sub getGeneExpressionByDonorsTab {
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundDonorIds',\&_tabSerialize);
+}
+
+sub getGeneExpressionByDonorsMatrix {
+	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundDonorIds',\&_matrixSerialize);
 }
 
 prefix '/:domain_id' => sub {

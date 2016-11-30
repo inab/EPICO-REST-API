@@ -10,6 +10,8 @@ package EPICO::REST::Backend::EPICO;
 
 use base qw(EPICO::REST::Backend);
 
+use boolean qw();
+
 use BP::Model;
 use BP::Loader::Tools;
 use BP::Loader::CorrelatableConcept;
@@ -368,46 +370,13 @@ sub getCVtermsFromColumn($$$;\@) {
 }
 
 use constant {
-	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME	=>	'sdata',
-	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME	=>	'lab',
-	EXTERNAL_CONCEPT_DOMAIN_NAME	=>	'external',
-};
-
-use constant {
-	DONOR_CONCEPT_NAME	=>	'donor',
-	SPECIMEN_CONCEPT_NAME	=>	'specimen',
-	SAMPLE_CONCEPT_NAME	=>	'sample',
-	FEATURES_CONCEPT_NAME	=>	'features',
-};
-
-use constant {
-	DONOR_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . DONOR_CONCEPT_NAME(),
-	SPECIMEN_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . SPECIMEN_CONCEPT_NAME(),
-	SAMPLE_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . SAMPLE_CONCEPT_NAME(),
-};
-
-my %concept2id = (
-	DONOR_CONCEPT_TYPE()	=>	'donor_id',
-	SPECIMEN_CONCEPT_TYPE()	=>	'specimen_id',
-	SAMPLE_CONCEPT_TYPE()	=>	'sample_id',
-);
-
-use constant	EXPERIMENT_ID	=>	'experiment_id';
-
-my %conceptDomain2id = (
-	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME()	=>	EXPERIMENT_ID(),
-);
-
-use constant {
 	METADATA_COLLECTION	=>	'metadata',
 	PRIMARY_COLLECTION	=>	'primary',
 };
 
-use constant	ANALYSIS_ID	=>	'analysis_id';
-
 my %collection2id = (
-	METADATA_COLLECTION()	=>	ANALYSIS_ID(),
-	PRIMARY_COLLECTION()	=>	ANALYSIS_ID(),
+	METADATA_COLLECTION()	=>	EPICO::REST::Backend::ANALYSIS_ID(),
+	PRIMARY_COLLECTION()	=>	EPICO::REST::Backend::ANALYSIS_ID(),
 );
 
 use constant	ALL_IDS	=>	'_all';
@@ -473,7 +442,7 @@ sub getSampleTrackingData(;$) {
 	
 	# Getting the correspondence from concepts to collections, so the queries can be issued
 	my @concepts = ();
-	foreach my $conceptDomainName ((SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME(),LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME())) {
+	foreach my $conceptDomainName ((EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME(),EPICO::REST::Backend::LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME())) {
 		
 		if(exists($dbModel->{'domains'}{$conceptDomainName})) {
 			my $conceptDomain = $model->getConceptDomain($conceptDomainName);
@@ -501,13 +470,13 @@ sub getSampleTrackingData(;$) {
 				my $data = undef;
 				
 				if($onlyIds) {
-					my $key = exists($concept2id{$doc->{_type}}) ? $concept2id{$doc->{_type}} : EXPERIMENT_ID();
+					my $key = exists($EPICO::REST::Backend::Concept2id{$doc->{EPICO::REST::Backend::TYPE_ID()}}) ? $EPICO::REST::Backend::Concept2id{$doc->{EPICO::REST::Backend::TYPE_ID()}} : EPICO::REST::Backend::EXPERIMENT_ID();
 					$data = {
-						'_type'	=>	$doc->{_type},
+						EPICO::REST::Backend::TYPE_ID()	=>	$doc->{EPICO::REST::Backend::TYPE_ID()},
 						$key	=>	$doc->{_source}{$key}
 					};
 				} else {
-					$doc->{_source}{_type} = $doc->{_type};
+					$doc->{_source}{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 					$data = $doc->{_source};
 				}
 				
@@ -524,12 +493,13 @@ sub getSampleTrackingData(;$) {
 #	key_id: If defined, fetch the subset of concept instances matching these concept ids
 #	onlyIds: If true, return only the concept instance ids
 #	attr_name: If defined, match key_id against this attribute, instead of the concept id
-sub _getFromConcept($$;$$$) {
+#	p_filterFunc: A entry filtering function
+sub _getFromConcept($$;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($conceptDomainName, $conceptName,$key_id,$onlyIds,$attr_name) = @_;
+	my($conceptDomainName, $conceptName,$key_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
 	my $termQuery = undef;
 	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
@@ -548,10 +518,10 @@ sub _getFromConcept($$;$$$) {
 			
 			if(defined($conceptName)) {
 				$concept = $conceptDomain->conceptHash()->{$conceptName};
-				$key_name = $concept2id{$concept->id()};
+				$key_name = $EPICO::REST::Backend::Concept2id{$concept->id()};
 			} else {
 				$concept = $conceptDomain->concepts();
-				$key_name = $conceptDomain2id{$conceptDomainName};
+				$key_name = $EPICO::REST::Backend::ConceptDomain2id{$conceptDomainName};
 			}
 			$attr_name = $key_name  unless(defined($attr_name));
 			
@@ -561,36 +531,45 @@ sub _getFromConcept($$;$$$) {
 			
 			my $scroll = $mapper->queryConcept($concept,$query_body);
 			
+			my $onlyOne = defined($termQuery) && !ref($key_id);
 			my @metadata = ();
 			until($scroll->is_finished) {
 				$scroll->refill_buffer();
 				my @docs = $scroll->drain_buffer();
 				
 				if(scalar(@docs) > 0) {
-					if(defined($termQuery) && !ref($key_id)) {
-						my $doc = $docs[0];
-						$doc->{_source}{_type} = $doc->{_type};
-						$retval = $doc->{_source};
-						last;
-					} else {
-						$retval = \@metadata;
-						foreach my $doc (@docs) {
+					foreach my $doc (@docs) {
+						# Maybe needed by the filtering function
+						$doc->{_source}->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
+						
+						my $doSave = defined($p_filterFunc) ? $p_filterFunc->($doc->{_source}) : boolean::true;
+						
+						if($doSave) {
 							my $data = undef;
 							if($onlyIds) {
 								$data = {
-									$key_name	=>	$doc->{_source}{$key_name}
+									$key_name	=>	$doc->{_source}{$key_name},
+									EPICO::REST::Backend::TYPE_ID()	=>	$doc->{EPICO::REST::Backend::TYPE_ID()},
 								};
 								$data->{$attr_name} = $doc->{_source}{$attr_name}  if($attr_name ne $key_name);
 							} else {
 								$data = $doc->{_source};
 							}
-							$data->{_type} = $doc->{_type};
 							
-							push(@metadata,$data);
+							if($onlyOne) {
+								$retval = $data;
+								last;
+							} else {
+								push(@metadata,$data);
+							}
 						}
 					}
+					
+					last  if($onlyOne && defined($retval));
 				}
 			}
+			
+			$retval = \@metadata  unless($onlyOne);
 		}
 	}
 	
@@ -604,7 +583,7 @@ sub getDonors(;$$$) {
 	
 	my($donor_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,DONOR_CONCEPT_NAME,$donor_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::DONOR_CONCEPT_NAME,$donor_id,$onlyIds,$attr_name);
 }
 
 sub getSpecimens(;$$$) {
@@ -614,7 +593,7 @@ sub getSpecimens(;$$$) {
 	
 	my($specimen_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds,$attr_name);
 }
 
 sub getSamples(;$$$) {
@@ -624,7 +603,7 @@ sub getSamples(;$$$) {
 	
 	my($sample_id,$onlyIds,$attr_name) = @_;
 	
-	return $self->_getFromConcept(SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds,$attr_name);
 }
 
 sub getExperiments(;$$) {
@@ -632,9 +611,9 @@ sub getExperiments(;$$) {
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($experiment_id,$onlyIds) = @_;
+	my($experiment_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
-	return $self->_getFromConcept(LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME,undef,$experiment_id,$onlyIds);
+	return $self->_getFromConcept(EPICO::REST::Backend::LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME,undef,$experiment_id,$onlyIds,$attr_name,$p_filterFunc);
 }
 
 # Input parameters:
@@ -642,12 +621,13 @@ sub getExperiments(;$$) {
 #	key_id: If defined, fetch the subset of concept instances on the input collection matching these concept ids
 #	onlyIds: If true, return only the concept instance ids
 #	attr_name: If defined, match key_id against this attribute, instead of the concept id
-sub _getFromCollection($;$$$) {
+#	p_filterFunc: A entry filtering function
+sub _getFromCollection($;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($collectionName,$key_id,$onlyIds,$attr_name) = @_;
+	my($collectionName,$key_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
 	my $termQuery = undef;
 	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
@@ -670,50 +650,71 @@ sub _getFromCollection($;$$$) {
 			
 			my $scroll = $mapper->queryCollection($collection,$query_body);
 			
+			my $onlyOne = defined($termQuery) && !ref($key_id);
 			my @metadata = ();
 			until($scroll->is_finished) {
 				$scroll->refill_buffer();
 				my @docs = $scroll->drain_buffer();
 				
 				if(scalar(@docs) > 0) {
-					if(defined($termQuery) && !ref($key_id)) {
-						my $doc = $docs[0];
-						$doc->{_source}{_type} = $doc->{_type};
-						$retval = $doc->{_source};
-						last;
-					} else {
-						$retval = \@metadata;
-						foreach my $doc (@docs) {
+					foreach my $doc (@docs) {
+						# Maybe needed by the filtering function
+						$doc->{_source}->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
+						
+						my $doSave = defined($p_filterFunc) ? $p_filterFunc->($doc->{_source}) : boolean::true;
+						
+						if($doSave) {
 							my $data = undef;
 							if($onlyIds) {
 								$data = {
-									$key_name	=>	$doc->{_source}{$key_name}
+									$key_name	=>	$doc->{_source}{$key_name},
+									EPICO::REST::Backend::TYPE_ID()	=>	$doc->{EPICO::REST::Backend::TYPE_ID()},
 								};
 								$data->{$attr_name} = $doc->{_source}{$attr_name}  if($attr_name ne $key_name);
 							} else {
 								$data = $doc->{_source};
 							}
-							$data->{_type} = $doc->{_type};
 							
-							push(@metadata,$data);
+							if($onlyOne) {
+								$retval = $data;
+								last;
+							} else {
+								push(@metadata,$data);
+							}
 						}
 					}
+					
+					last  if($onlyOne && defined($retval));
 				}
 			}
+			
+			$retval = \@metadata  unless($onlyOne);
 		}
 	}
 	
 	return $retval;
 }
 
-sub getAnalysisMetadata(;$$) {
+sub getAnalysisMetadata(;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($analysis_id,$onlyIds) = @_;
+	my($analysis_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
-	return $self->_getFromCollection(METADATA_COLLECTION,$analysis_id,$onlyIds);
+	return $self->_getFromCollection(METADATA_COLLECTION,$analysis_id,$onlyIds,$attr_name,$p_filterFunc);
+}
+
+sub getAnalysisIdsFromExperimentIds($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($analysis_id,$p_filterFunc) = @_;
+	
+	# Getting the mappings of compound
+	
+	return $self->getAnalysisMetadata($analysis_id,boolean::true,EPICO::REST::Backend::EXPERIMENT_ID(),$p_filterFunc);
 }
 
 sub _ChooseLabelFromSymbols($) {
@@ -753,7 +754,7 @@ sub getGeneExpressionFromCompoundAnalysisIds(\@) {
 	my %analysis_ids = map { ( ref($_) eq 'ARRAY'? $_->[-1] : $_ ) => $_ } @{$compound_analysis_ids};
 	my @analysis_ids_keys = keys(%analysis_ids);
 	
-	my $p_res = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys);
+	my $p_res = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys,undef,undef,\&EPICO::REST::Backend::_FilterEntryByGeneExpressionAnalysisData);
 	
 	my %exprAnalyses = ();
 	
@@ -959,7 +960,7 @@ sub _getDataFromCollection($$) {
 					$retval = \@dataArr;
 					foreach my $doc (@docs) {
 						my $data = $doc->{_source};
-						$data->{_type} = $doc->{_type};
+						$data->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 						
 						push(@dataArr,$data);
 					}
@@ -1041,7 +1042,7 @@ sub _getDataStreamFromCollection($$) {
 			#		$retval = \@dataArr;
 			#		foreach my $doc (@docs) {
 			#			my $data = $doc->{_source};
-			#			$data->{_type} = $doc->{_type};
+			#			$data->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 			#			
 			#			push(@dataArr,$data);
 			#		}
@@ -1111,7 +1112,7 @@ sub _fetchDataStreamFromCollection($\%) {
 						$retval = \@dataArr;
 						foreach my $doc (@{$scrollRes->{'hits'}{'hits'}}) {
 							my $data = $doc->{_source};
-							$data->{_type} = $doc->{_type};
+							$data->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 							
 							push(@dataArr,$data);
 						}
@@ -1216,18 +1217,6 @@ sub getDataCountFromCoords($$$) {
 }
 
 use constant {
-	DLAT_CONCEPT_DOMAIN_NAME	=>	'dlat',
-	EXPG_CONCEPT_DOMAIN_NAME	=>	'exp',
-	EXPT_CONCEPT_DOMAIN_NAME	=>	'exp',
-	RREG_CONCEPT_DOMAIN_NAME	=>	'rreg',
-	PDNA_CONCEPT_DOMAIN_NAME	=>	'pdna',
-	
-	DLAT_CONCEPT_NAME	=>	'mr',
-	EXPG_CONCEPT_NAME	=>	'g',
-	EXPT_CONCEPT_NAME	=>	't',
-	RREG_CONCEPT_NAME	=>	'p',
-	PDNA_CONCEPT_NAME	=>	'p',
-	
 	DLAT_AGG_NAME	=>	'Wgbs',
 	EXPG_AGG_NAME	=>	'RnaSeqG',
 	EXPT_AGG_NAME	=>	'RnaSeqT',
@@ -1252,11 +1241,11 @@ sub _getDataStatsFromCollection($$) {
 			my $shouldQuery = $self->_genShouldQuery($rangeData);
 			my $key_name = $collection2id{$collectionName};
 			
-			my $DLAT_CONCEPT = $model->getConceptDomain(DLAT_CONCEPT_DOMAIN_NAME)->conceptHash()->{DLAT_CONCEPT_NAME()}->id();
-			my $EXPG_CONCEPT = $model->getConceptDomain(EXPG_CONCEPT_DOMAIN_NAME)->conceptHash()->{EXPG_CONCEPT_NAME()}->id();
-			my $EXPT_CONCEPT = $model->getConceptDomain(EXPT_CONCEPT_DOMAIN_NAME)->conceptHash()->{EXPT_CONCEPT_NAME()}->id();
-			my $RREG_CONCEPT = $model->getConceptDomain(RREG_CONCEPT_DOMAIN_NAME)->conceptHash()->{RREG_CONCEPT_NAME()}->id();
-			my $PDNA_CONCEPT = $model->getConceptDomain(PDNA_CONCEPT_DOMAIN_NAME)->conceptHash()->{PDNA_CONCEPT_NAME()}->id();
+			my $DLAT_CONCEPT = $model->getConceptDomain(EPICO::REST::Backend::DLAT_CONCEPT_DOMAIN_NAME)->conceptHash()->{EPICO::REST::Backend::DLAT_CONCEPT_NAME()}->id();
+			my $EXPG_CONCEPT = $model->getConceptDomain(EPICO::REST::Backend::EXPG_CONCEPT_DOMAIN_NAME)->conceptHash()->{EPICO::REST::Backend::EXPG_CONCEPT_NAME()}->id();
+			my $EXPT_CONCEPT = $model->getConceptDomain(EPICO::REST::Backend::EXPT_CONCEPT_DOMAIN_NAME)->conceptHash()->{EPICO::REST::Backend::EXPT_CONCEPT_NAME()}->id();
+			my $RREG_CONCEPT = $model->getConceptDomain(EPICO::REST::Backend::RREG_CONCEPT_DOMAIN_NAME)->conceptHash()->{EPICO::REST::Backend::RREG_CONCEPT_NAME()}->id();
+			my $PDNA_CONCEPT = $model->getConceptDomain(EPICO::REST::Backend::PDNA_CONCEPT_DOMAIN_NAME)->conceptHash()->{EPICO::REST::Backend::PDNA_CONCEPT_NAME()}->id();
 			
 			my %agg2type = (
 				DLAT_AGG_NAME()	=>	$DLAT_CONCEPT,
@@ -1280,7 +1269,7 @@ sub _getDataStatsFromCollection($$) {
 					DLAT_AGG_NAME()	=>	{
 						'filter'	=>	{
 							'term'	=>	{
-								'_type'	=>	$DLAT_CONCEPT
+								EPICO::REST::Backend::TYPE_ID()	=>	$DLAT_CONCEPT
 							}
 						},
 						'aggregations'	=>	{
@@ -1302,7 +1291,7 @@ sub _getDataStatsFromCollection($$) {
 					EXPG_AGG_NAME()	=>	{
 						'filter'	=>	{
 							'term'	=>	{
-								'_type'	=>	$EXPG_CONCEPT
+								EPICO::REST::Backend::TYPE_ID()	=>	$EXPG_CONCEPT
 							}
 						},
 						'aggregations'	=>	{
@@ -1324,7 +1313,7 @@ sub _getDataStatsFromCollection($$) {
 					EXPT_AGG_NAME()	=>	{
 						'filter'	=>	{
 							'term'	=>	{
-								'_type'	=>	$EXPT_CONCEPT
+								EPICO::REST::Backend::TYPE_ID()	=>	$EXPT_CONCEPT
 							}
 						},
 						'aggregations'	=>	{
@@ -1346,7 +1335,7 @@ sub _getDataStatsFromCollection($$) {
 					RREG_AGG_NAME()	=>	{
 						'filter'	=>	{
 							'term'	=>	{
-								'_type'	=>	$RREG_CONCEPT
+								EPICO::REST::Backend::TYPE_ID()	=>	$RREG_CONCEPT
 							}
 						},
 						'aggregations'	=>	{
@@ -1369,7 +1358,7 @@ sub _getDataStatsFromCollection($$) {
 					PDNA_AGG_NAME()	=>	{
 						'filter'	=>	{
 							'term'	=>	{
-								'_type'	=>	$PDNA_CONCEPT
+								EPICO::REST::Backend::TYPE_ID()	=>	$PDNA_CONCEPT
 							}
 						},
 						'aggregations'	=>	{
@@ -1402,7 +1391,7 @@ sub _getDataStatsFromCollection($$) {
 					my $type = $agg2type{$aggType};
 					
 					foreach my $data (@{$results->{'aggregations'}->{$aggType}->{'analyses'}->{'buckets'}}) {
-						$data->{_type} = $type;
+						$data->{EPICO::REST::Backend::TYPE_ID()} = $type;
 						push(@dataArr,$data);
 					}
 				}
@@ -1444,8 +1433,8 @@ sub getGenomicLayout($) {
 	
 	my($rangeData) = @_;
 	
-	my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME();
-	my $conceptName = FEATURES_CONCEPT_NAME();
+	my $conceptDomainName = EPICO::REST::Backend::EXTERNAL_CONCEPT_DOMAIN_NAME();
+	my $conceptName = EPICO::REST::Backend::FEATURES_CONCEPT_NAME();
 	my $prefix = 'coordinates';
 	
 	my $model = $self->{model};
@@ -1489,7 +1478,7 @@ sub getGenomicLayout($) {
 					$retval = \@dataArr;
 					foreach my $doc (@docs) {
 						my $data = $doc->{_source};
-						$data->{_type} = $doc->{_type};
+						$data->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 						
 						push(@dataArr,$data);
 					}
@@ -1532,8 +1521,8 @@ sub _queryFeaturesInternal(\@$) {
 	
 	my $termQuery = ref($query) ? 'terms':'term';
 	
-	my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME;
-	my $conceptName = FEATURES_CONCEPT_NAME;
+	my $conceptDomainName = EPICO::REST::Backend::EXTERNAL_CONCEPT_DOMAIN_NAME;
+	my $conceptName = EPICO::REST::Backend::FEATURES_CONCEPT_NAME;
 	
 	my $model = $self->{model};
 	my $dbModel = $self->getModelFromDomain();
@@ -1621,7 +1610,7 @@ sub _queryFeaturesInternal(\@$) {
 					$retval = \@matches;
 					foreach my $doc (@docs) {
 						my $data = $doc->{_source};
-						$data->{_type} = $doc->{_type};
+						$data->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
 						
 						push(@matches,$data);
 					}
@@ -1654,8 +1643,8 @@ sub suggestFeatures($) {
 		# THIS IS VERY IMPORTANT. OTHERWISE, PREFIX SEARCH WON'T WORK!!!!
 		$query = lc($query);
 		
-		my $conceptDomainName = EXTERNAL_CONCEPT_DOMAIN_NAME;
-		my $conceptName = FEATURES_CONCEPT_NAME;
+		my $conceptDomainName = EPICO::REST::Backend::EXTERNAL_CONCEPT_DOMAIN_NAME;
+		my $conceptName = EPICO::REST::Backend::FEATURES_CONCEPT_NAME;
 		
 		my $model = $self->{model};
 		my $dbModel = $self->getModelFromDomain();
@@ -1704,7 +1693,7 @@ sub suggestFeatures($) {
 					my @matches = ();
 					foreach my $hit (@{$results->{'hits'}{'hits'}}) {
 						my $data = $hit->{_source};
-						$data->{_type} = $hit->{_type};
+						$data->{EPICO::REST::Backend::TYPE_ID()} = $hit->{EPICO::REST::Backend::TYPE_ID()};
 						
 						push(@matches,$data);
 					}

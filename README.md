@@ -68,6 +68,19 @@ Endpoints
 * GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stats
 * GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stats	It gives detailed stats	(only for BLUEPRINT)
 
+* GET /{domain}/genomic_layout/{chromosome}/{chromosome_start}/{chromosome_end}
+* GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
+
+* GET /{domain}/features?q=	It returns the features, their types and their coordinates matching the input query (which can be an identifier, for instance)
+
+* GET /{domain}/features/suggest?q=	It returns the features suggested by the input prefix query (useful for autocompletion)
+
+Next methods expect a tabular input, and return tables. They can be called from command line like this:
+
+```
+curl -X POST -T 'identifiers.txt' -o results.txt http://localhost:5000/EPICO:2016-08/analysis/query/gene_expression/byAnalyses/matrix
+```
+
 * POST /{domain}/analysis/query/gene_expression/byDonors
 * POST /{domain}/analysis/query/gene_expression/byDonors/table
 
@@ -87,10 +100,3 @@ Endpoints
 * POST /{domain}/analysis/query/gene_expression/byAnalyses/table
 
 * POST /{domain}/analysis/query/gene_expression/byAnalyses/matrix
-
-* GET /{domain}/genomic_layout/{chromosome}/{chromosome_start}/{chromosome_end}
-* GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
-
-* GET /{domain}/features?q=	It returns the features, their types and their coordinates matching the input query (which can be an identifier, for instance)
-
-* GET /{domain}/features/suggest?q=	It returns the features suggested by the input prefix query (useful for autocompletion)
