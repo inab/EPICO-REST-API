@@ -374,7 +374,7 @@ use constant {
 	PRIMARY_COLLECTION	=>	'primary',
 };
 
-my %collection2id = (
+our %collection2id = (
 	METADATA_COLLECTION()	=>	EPICO::REST::Backend::ANALYSIS_ID(),
 	PRIMARY_COLLECTION()	=>	EPICO::REST::Backend::ANALYSIS_ID(),
 );
@@ -402,7 +402,7 @@ use constant REGION_FEATURES => [ REGION_FEATURE_GENE , REGION_FEATURE_TRANSCRIP
 
 use constant DEFAULT_QUERY_TYPES => [REGION_FEATURE_GENE,REGION_FEATURE_PATHWAY,REGION_FEATURE_REACTION];
 
-my @FEATURE_RANKING= (
+our @FEATURE_RANKING= (
 	REGION_FEATURE_GENE,
 	REGION_FEATURE_PATHWAY,
 	REGION_FEATURE_DIRECT_COMPLEX,
@@ -418,7 +418,7 @@ my @FEATURE_RANKING= (
 	REGION_FEATURE_CDS,
 );
 
-my %FEATURE_RANKING_HASH = ();
+our %FEATURE_RANKING_HASH = ();
 
 {
 
@@ -576,37 +576,37 @@ sub _getFromConcept($$;$$$$) {
 	return $retval;
 }
 
-sub getDonors(;$$$) {
+sub getDonors(;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($donor_id,$onlyIds,$attr_name) = @_;
+	my($donor_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
-	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::DONOR_CONCEPT_NAME,$donor_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::DONOR_CONCEPT_NAME,$donor_id,$onlyIds,$attr_name,$p_filterFunc);
 }
 
-sub getSpecimens(;$$$) {
+sub getSpecimens(;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($specimen_id,$onlyIds,$attr_name) = @_;
+	my($specimen_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
-	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SPECIMEN_CONCEPT_NAME,$specimen_id,$onlyIds,$attr_name,$p_filterFunc);
 }
 
-sub getSamples(;$$$) {
+sub getSamples(;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($sample_id,$onlyIds,$attr_name) = @_;
+	my($sample_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
-	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds,$attr_name);
+	return $self->_getFromConcept(EPICO::REST::Backend::SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME,EPICO::REST::Backend::SAMPLE_CONCEPT_NAME,$sample_id,$onlyIds,$attr_name,$p_filterFunc);
 }
 
-sub getExperiments(;$$) {
+sub getExperiments(;$$$$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
@@ -703,18 +703,6 @@ sub getAnalysisMetadata(;$$$$) {
 	my($analysis_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
 	return $self->_getFromCollection(METADATA_COLLECTION,$analysis_id,$onlyIds,$attr_name,$p_filterFunc);
-}
-
-sub getAnalysisIdsFromExperimentIds($$) {
-	my $self = shift;
-	
-	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
-	
-	my($analysis_id,$p_filterFunc) = @_;
-	
-	# Getting the mappings of compound
-	
-	return $self->getAnalysisMetadata($analysis_id,boolean::true,EPICO::REST::Backend::EXPERIMENT_ID(),$p_filterFunc);
 }
 
 sub _ChooseLabelFromSymbols($) {

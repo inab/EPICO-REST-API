@@ -9,6 +9,7 @@ use warnings 'all';
 # All the backends must inherit from this class, and implement its API
 package EPICO::REST::Backend;
 
+use boolean qw();
 use Carp;
 use Config::IniFiles;
 use Log::Log4perl;
@@ -62,13 +63,15 @@ use constant {
 	ANALYSIS_ID	=>	'analysis_id',
 };
 
-my %Concept2id = (
+use constant	ANALYZED_SAMPLE_ID	=>	'analyzed_'.SAMPLE_ID();
+
+our %Concept2id = (
 	DONOR_CONCEPT_TYPE()	=>	DONOR_ID(),
 	SPECIMEN_CONCEPT_TYPE()	=>	SPECIMEN_ID(),
 	SAMPLE_CONCEPT_TYPE()	=>	SAMPLE_ID(),
 );
 
-my %ConceptDomain2id = (
+our %ConceptDomain2id = (
 	LABORATORY_EXPERIMENTS_CONCEPT_DOMAIN_NAME()	=>	EXPERIMENT_ID(),
 );
 
@@ -127,23 +130,67 @@ sub getSampleTrackingData(;$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
-sub getDonors(;$$) {
+sub getDonors(;$$$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
-sub getSpecimens(;$$) {
+sub getSpecimens(;$$$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
-sub getSamples(;$$) {
+sub getSpecimenIdsFromDonorIds($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
+	
+	my($specimen_id,$p_filterFunc) = @_;
+	
+	return $self->getSpecimens($specimen_id,boolean::true,DONOR_ID(),$p_filterFunc);
+}
+
+sub getSamples(;$$$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
-sub getExperiments(;$$) {
+sub getSampleIdsFromSpecimenIds($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
+	
+	my($sample_id,$p_filterFunc) = @_;
+	
+	return $self->getSamples($sample_id,boolean::true,SPECIMEN_ID(),$p_filterFunc);
+}
+
+sub getExperiments(;$$$$) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
-sub getAnalysisMetadata(;$$) {
+sub getExperimentIdsFromSampleIds($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
+	
+	my($experiment_id,$p_filterFunc) = @_;
+	
+	return $self->getExperiments($experiment_id,boolean::true,ANALYZED_SAMPLE_ID(),$p_filterFunc);
+}
+
+sub getAnalysisMetadata(;$$$$) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getAnalysisIdsFromExperimentIds($$) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
+	
+	my($analysis_id,$p_filterFunc) = @_;
+	
+	return $self->getAnalysisMetadata($analysis_id,boolean::true,EXPERIMENT_ID(),$p_filterFunc);
+}
+
+sub getGeneExpressionFromCompoundAnalysisIds(\@) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
@@ -284,7 +331,7 @@ sub getCompoundAnalysisIdsFromCompoundSampleIds(\@) {
 	my($p_compound_sample_ids) = @_;
 		
 	return (SAMPLE_ID(),$self->_fromAToZ($p_compound_sample_ids,[
-			[SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
+			[ANALYZED_SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
 			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',\&_FilterEntryByExpressionAnalysisMetadata],
 		]));
 }
@@ -299,7 +346,7 @@ sub getCompoundAnalysisIdsFromCompoundDonorIds(\@) {
 	return (DONOR_ID(),$self->_fromAToZ($p_compound_donor_ids,[
 			[DONOR_ID(),SPECIMEN_ID(),'getSpecimenIdsFromDonorIds',undef],
 			[SPECIMEN_ID(),SAMPLE_ID(),'getSampleIdsFromSpecimenIds',undef],
-			[SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
+			[ANALYZED_SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
 			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',\&_FilterEntryByExpressionAnalysisMetadata],
 		]));
 }
