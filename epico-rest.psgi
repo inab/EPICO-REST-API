@@ -139,11 +139,17 @@ our $jserr = JSON->new->convert_blessed();
 package EPICO::REST::API;
 
 use Dancer2;
-use Dancer2::Serializer::JSON;
+#use Dancer2::Serializer::JSON;
+use Dancer2::Serializer::MaybeJSON;
 use Dancer2::Session::YAML;
 
 set engines => {
 	'serializer' => {
+		'MaybeJSON' => {
+			'convert_blessed' => 1,
+			'utf8'	=>	1,
+#			'pretty'	=>	1,
+		},
 		'JSON' => {
 			'convert_blessed' => 1,
 			'utf8'	=>	1,
@@ -151,6 +157,9 @@ set engines => {
 		}
 	},
 	'deserializer' => {
+		'MaybeJSON' => {
+			'utf8'	=>	0
+		},
 		'JSON' => {
 			'utf8'	=>	0
 		}
@@ -162,7 +171,8 @@ set engines => {
 	}
 };
 set session => 'YAML';
-set serializer => 'JSON';
+#set serializer => 'JSON';
+set serializer => 'MaybeJSON';
 
 set charset => 'UTF-8';
 
@@ -1006,7 +1016,7 @@ sub _getGeneExpressionByAnalysesCommon($$) {
 	}
 	
 	if(defined($domainInstance)) {
-		my $content = request->content;
+		my $content = request->body;
 		
 		# Cleaning up the input
 		my $p_deserialized_ids = _inputDeserialize($content);
