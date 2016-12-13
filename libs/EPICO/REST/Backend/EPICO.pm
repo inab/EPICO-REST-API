@@ -622,12 +622,13 @@ sub getExperiments(;$$$$) {
 #	onlyIds: If true, return only the concept instance ids
 #	attr_name: If defined, match key_id against this attribute, instead of the concept id
 #	p_filterFunc: A entry filtering function
-sub _getFromCollection($;$$$$) {
+#	p_renderFunc: A entry rendering function. If set, it returns an empty array
+sub _getFromCollection($;$$$\&\&) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($collectionName,$key_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
+	my($collectionName,$key_id,$onlyIds,$attr_name,$p_filterFunc,$p_renderFunc) = @_;
 	
 	my $termQuery = undef;
 	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
@@ -652,11 +653,24 @@ sub _getFromCollection($;$$$$) {
 			
 			my $onlyOne = defined($termQuery) && !ref($key_id);
 			my @metadata = ();
+			
+			unless(ref($p_renderFunc) eq 'CODE') {
+				$p_renderFunc = sub {
+					my($p_data) = @_;
+					
+					push(@metadata,@{$p_data});
+					
+					return undef;
+				};
+			}
+			
 			until($scroll->is_finished) {
 				$scroll->refill_buffer();
 				my @docs = $scroll->drain_buffer();
 				
 				if(scalar(@docs) > 0) {
+					my $doStopOnOne = undef;
+					my @saved = ();
 					foreach my $doc (@docs) {
 						# Maybe needed by the filtering function
 						$doc->{_source}->{EPICO::REST::Backend::TYPE_ID()} = $doc->{EPICO::REST::Backend::TYPE_ID()};
@@ -677,14 +691,18 @@ sub _getFromCollection($;$$$$) {
 							
 							if($onlyOne) {
 								$retval = $data;
-								last;
+								$doStopOnOne = 1;
 							} else {
-								push(@metadata,$data);
+								push(@saved,$data);
 							}
+							
+							last  if($doStopOnOne);
 						}
 					}
 					
-					last  if($onlyOne && defined($retval));
+					last  if($doStopOnOne);
+					
+					last  if(scalar(@saved) > 0 && $p_renderFunc->(\@saved));
 				}
 			}
 			
@@ -731,69 +749,231 @@ sub _ChooseLabelFromSymbols($) {
 	return $featureSymbol->{'value'}[0];
 }
 
-sub getGeneExpressionFromCompoundAnalysisIds(\@) {
+sub getGeneExpressionFromCompoundAnalysisIds(\@;\&) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
 	
-	my($compound_analysis_ids) = @_;
+	my($compound_analysis_ids,$p_renderFunc) = @_;
 	
 	# Using this hash to store the analysis_id <=> compound_analysis_id correspondence
 	my %analysis_ids = map { ( ref($_) eq 'ARRAY'? $_->[-1] : $_ ) => $_ } @{$compound_analysis_ids};
 	my @analysis_ids_keys = keys(%analysis_ids);
 	
-	my $p_res = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys,undef,undef,\&EPICO::REST::Backend::_FilterEntryByGeneExpressionAnalysisData);
+	# Some batch optimizations (a eighth of the whole batch size)
+	my $BATCH_SIZE = $self->{mapper}->bulkBatchSize() >> 3;
 	
+	# Setting up the rendering function (if any!)
+	my $doSkipReturn = ref($p_renderFunc) eq 'CODE';
 	my %exprAnalyses = ();
+	unless($doSkipReturn) {
+		$p_renderFunc = sub {
+			my($p_res) = @_;
+			
+			foreach my $res (@{$p_res}) {
+				my $analysis_id = $res->{'analysis_id'};
+				
+				unless(exists($exprAnalyses{$analysis_id})) {
+					$exprAnalyses{$analysis_id} = {
+						# The compound analysis id
+						'id'	=>	$res->{'compound_analysis_id'},
+						'data'	=>	[]
+					};
+				}
+				
+				my $p_expr_analysis = $exprAnalyses{$analysis_id};
+				
+				my $gene_id;
+				if(exists($res->{'gene_stable_id'})) {
+					$gene_id = $res->{'gene_stable_id'};
+				} else {
+					$gene_id = $res->{'chromosome'} . ':' . $res->{'chromosome_start'} . '-' . $res->{'chromosome_end'};
+				}
+				
+				push(@{$p_expr_analysis->{'data'}},[$gene_id,'',$res->{'FPKM'}]);
+			}
+			
+			return undef;
+		};
+	}
 	
-	# Filling the resulting structure
 	my %geneIdLookup = ();
-	foreach my $res (@{$p_res}) {
-		if(exists($res->{'FPKM'})) {
-			my $analysis_id = $res->{'analysis_id'};
-			
-			unless(exists($exprAnalyses{$analysis_id})) {
-				$exprAnalyses{$analysis_id} = {
-					# The compound analysis id
-					'id'	=>	$analysis_ids{$analysis_id},
-					'data'	=>	[]
-				};
-			}
-			
-			my $p_expr_analysis = $exprAnalyses{$analysis_id};
-			my $gene_id = $res->{'gene_stable_id'};
-			if(defined($gene_id)) {
-				$geneIdLookup{$gene_id} = $gene_id  unless(exists($geneIdLookup{$gene_id}));
-			} else {
-				$gene_id = $res->{'chromosome'} . ':' . $res->{'chromosome_start'} . '-' . $res->{'chromosome_end'};
-			}
-			
-			push(@{$p_expr_analysis->{'data'}},[$gene_id,'',$res->{'FPKM'}]);
-		}
-	}
-	
-	# Adding the gene names to the result after querying the database
-	my @geneIds = keys(%geneIdLookup);
-	
-	my $p_geneNames = $self->_queryFeaturesInternal([REGION_FEATURE_GENE],\@geneIds);
-	
-	foreach my $p_geneName (@{$p_geneNames}) {
-		my $geneId = $p_geneName->{'feature_id'};
+	my %freshGeneIds = ();
+	my @retQueue = ();
+	my $numRetQueue = 0;
+	my $p_enrichAndRenderFunc = sub {
+		my($p_res) = @_;
 		
-		$geneIdLookup{$geneId} = _ChooseLabelFromSymbols($p_geneName->{'symbol'})  if(exists($geneIdLookup{$geneId}));
-	}
-	
-	# Last, return it augmented!
-	my @retExpr = values(%exprAnalyses);
-	foreach my $p_expr_analysis (@retExpr) {
-		foreach my $exprData (@{$p_expr_analysis->{'data'}}) {
-			my $geneId = $exprData->[0];
-			$exprData->[1] = $geneIdLookup{$geneId}  if(exists($geneIdLookup{$geneId}));
+		if(defined($p_res)) {
+			foreach my $res (@{$p_res}) {
+				if(exists($res->{'FPKM'})) {
+					# First, save it
+					push(@retQueue,$res);
+					$numRetQueue++;
+					
+					my $analysis_id = $res->{'analysis_id'};
+					$res->{'compound_analysis_id'} = $analysis_ids{$analysis_id};
+					
+					if(exists($res->{'gene_stable_id'})) {
+						my $gene_id = $res->{'gene_stable_id'};
+						
+						$freshGeneIds{$gene_id} = undef  unless(exists($geneIdLookup{$gene_id}) || exists($freshGeneIds{$gene_id}));
+					}
+				}
+			}
 		}
-	}
-
+		
+		# Flushing
+		if($numRetQueue >= $BATCH_SIZE || (!defined($p_res) && $numRetQueue > 0)) {
+			my @geneIds = keys(%freshGeneIds);
+			
+			# Should we fetch new gene ids <=> gene names correspondences?
+			if(scalar(@geneIds)) {
+				# Default values for the gene ids to look for
+				foreach my $geneId (@geneIds) {
+					$geneIdLookup{$geneId} = $geneId;
+				}
+				
+				my $p_geneNames = $self->_queryFeaturesInternal([REGION_FEATURE_GENE],\@geneIds);
+				
+				foreach my $p_geneName (@{$p_geneNames}) {
+					my $geneId = $p_geneName->{'feature_id'};
+					
+					$geneIdLookup{$geneId} = _ChooseLabelFromSymbols($p_geneName->{'symbol'})  if(exists($geneIdLookup{$geneId}));
+				}
+				
+				# Emptying the fresh ids hash
+				%freshGeneIds = ();
+			}
+			
+			# Now, enrich with the gene name
+			foreach my $res (@retQueue) {
+				my $geneId = $res->{'gene_stable_id'};
+				
+				$res->{'gene_stable_name'} = $geneIdLookup{$geneId}  if(exists($geneIdLookup{$geneId}));
+			}
+			
+			# Emit the retained entries!
+			$p_renderFunc->(\@retQueue);
+			
+			# And at last, empty the queue
+			@retQueue = ();
+			$numRetQueue = 0;
+		}
+		
+		return undef;
+	};
 	
-	return \@retExpr;
+	my $retval = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys,undef,undef,\&EPICO::REST::Backend::_FilterEntryByGeneExpressionAnalysisData,$p_enrichAndRenderFunc);
+	
+	if(defined($retval) && $numRetQueue > 0) {
+		# This flushes the return queue (in case it wasn't)
+		$p_enrichAndRenderFunc->(undef);
+	}
+	
+	if($doSkipReturn) {
+		return $retval;
+	} else {
+		# Last, return it augmented!
+		my @retExpr = values(%exprAnalyses);
+		foreach my $p_expr_analysis (@retExpr) {
+			foreach my $exprData (@{$p_expr_analysis->{'data'}}) {
+				my $geneId = $exprData->[0];
+				$exprData->[1] = $geneIdLookup{$geneId}  if(exists($geneIdLookup{$geneId}));
+			}
+		}
+		
+		return \@retExpr;
+	}
+}
+
+sub getRegulatoryRegionsFromCompoundAnalysisIds(\@;\&) {
+	my $self = shift;
+	
+	Carp::croak((caller(0))[3].' is an instance method!')  if(BP::Model::DEBUG && !ref($self));
+	
+	my($compound_analysis_ids,$p_renderFunc) = @_;
+	
+	# Using this hash to store the analysis_id <=> compound_analysis_id correspondence
+	my %analysis_ids = map { ( ref($_) eq 'ARRAY'? $_->[-1] : $_ ) => $_ } @{$compound_analysis_ids};
+	my @analysis_ids_keys = keys(%analysis_ids);
+	
+	# Some batch optimizations (a eighth of the whole batch size)
+	my $BATCH_SIZE = $self->{mapper}->bulkBatchSize() >> 3;
+	
+	# Setting up the rendering function (if any!)
+	my $doSkipReturn = ref($p_renderFunc) eq 'CODE';
+	my %rregAnalyses = ();
+	unless($doSkipReturn) {
+		$p_renderFunc = sub {
+			my($p_res) = @_;
+			
+			foreach my $res (@{$p_res}) {
+				my $analysis_id = $res->{'analysis_id'};
+				
+				unless(exists($rregAnalyses{$analysis_id})) {
+					$rregAnalyses{$analysis_id} = {
+						# The compound analysis id
+						'id'	=>	$res->{'compound_analysis_id'},
+						'data'	=>	[]
+					};
+				}
+				
+				my $p_rreg_analysis = $rregAnalyses{$analysis_id};
+				
+				push(@{$p_rreg_analysis->{'data'}},[$res->{'chromosome'},$res->{'chromosome_start'},$res->{'chromosome_end'},$res->{'z_score'}]);
+			}
+			
+			return undef;
+		};
+	}
+	
+	my @retQueue = ();
+	my $numRetQueue = 0;
+	my $p_enrichAndRenderFunc = sub {
+		my($p_res) = @_;
+		
+		if(defined($p_res)) {
+			foreach my $res (@{$p_res}) {
+				if(exists($res->{'z_score'})) {
+					# First, save it
+					push(@retQueue,$res);
+					$numRetQueue++;
+					
+					my $analysis_id = $res->{'analysis_id'};
+					$res->{'compound_analysis_id'} = $analysis_ids{$analysis_id};
+				}
+			}
+		}
+		
+		# Flushing
+		if($numRetQueue >= $BATCH_SIZE || (!defined($p_res) && $numRetQueue > 0)) {
+			# Emit the retained entries!
+			$p_renderFunc->(\@retQueue);
+			
+			# And at last, empty the queue
+			@retQueue = ();
+			$numRetQueue = 0;
+		}
+		
+		return undef;
+	};
+	
+	my $retval = $self->_getFromCollection(PRIMARY_COLLECTION,\@analysis_ids_keys,undef,undef,\&EPICO::REST::Backend::_FilterEntryByRegulatoryRegionsData,$p_enrichAndRenderFunc);
+	
+	if(defined($retval) && $numRetQueue > 0) {
+		# This flushes the return queue (in case it wasn't)
+		$p_enrichAndRenderFunc->(undef);
+	}
+	
+	if($doSkipReturn) {
+		return $retval;
+	} else {
+		# Last, return it augmented!
+		my @retExpr = values(%rregAnalyses);
+		
+		return \@retExpr;
+	}
 }
 
 

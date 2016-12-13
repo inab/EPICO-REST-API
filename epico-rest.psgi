@@ -915,6 +915,23 @@ sub _inputDeserialize($) {
 	return \@lines;
 }
 
+sub _rregSerialize($\@) {
+	my($headerName,$p_data) = @_;
+	
+	my @partialColumns = ('chromosome','chromosome_start','chromosome_end','z_score');
+	my $res = join("\t",'# '.$headerName,@partialColumns)."\n";
+	
+	foreach my $p_analysis (@{$p_data}) {
+		my $analysis_id = join(':',@{$p_analysis->{'id'}});
+		
+		my $lines = join("\n", map { join("\t",$analysis_id,$_->[0],$_->[1],$_->[2],$->[3]) } @{$p_analysis->{'data'}});
+		
+		$res .= $lines ."\n";
+	}
+	
+	return $res;
+}
+
 # It expects a header name and an array of hashes
 # Each hash contains two keys: 'id' and 'data'
 # 'id' is a reference to an array of identifiers for the data
@@ -1000,8 +1017,65 @@ sub _matrixSerialize($\@) {
 	return $res;
 }
 
-sub _getGeneExpressionByAnalysesCommon($$) {
-	my($dataMethodName,$p_serializeMethod) = @_;
+sub _tabSerializeGenerator($) {
+	my($idColumnName) = @_;
+	
+	return sub(\@) {
+		my($p_res) = @_;
+		
+		my $tablines = '';
+		if(defined($idColumnName)) {
+			my @partialColumns = ('gene_id','gene_name','FPKM');
+			$tablines .= join("\t",'# '.$idColumnName,@partialColumns)."\n";
+			
+			# Only do this once!
+			$idColumnName = undef;
+		}
+		
+		foreach my $res (@{$p_res}) {
+			my $analysis_id = join(':',@{$res->{'compound_analysis_id'}});
+				
+			$tablines .= join("\t",$analysis_id,$res->{'gene_stable_id'},$res->{'gene_stable_name'},$res->{'FPKM'})."\n";
+		}
+		
+		content $tablines;
+		
+		return undef;
+	};
+}
+
+sub _rregSerializeGenerator($) {
+	my($idColumnName) = @_;
+	
+	return sub(\@) {
+		my($p_res) = @_;
+		
+		my $tablines = '';
+		if(defined($idColumnName)) {
+			my @partialColumns = ('chromosome','chromosome_start','chromosome_end','z_score');
+			$tablines .= join("\t",'# '.$idColumnName,@partialColumns)."\n";
+			
+			# Only do this once!
+			$idColumnName = undef;
+		}
+		
+		foreach my $res (@{$p_res}) {
+			my $analysis_id = join(':',@{$res->{'compound_analysis_id'}});
+				
+			$tablines .= join("\t",$analysis_id,$res->{'chromosome'},$res->{'chromosome_start'},$res->{'chromosome_end'},$res->{'z_score'})."\n";
+		}
+		
+		content $tablines;
+		
+		return undef;
+	};
+}
+
+
+sub _getQueryByAnalysesCommon($$$) {
+	my($p_dataMethod,$queryMethodName,$p_serializeGeneratorMethod) = @_;
+	
+	my($id_attr,$dataMethodName,$p_experimentFilterMethod) = @{$p_dataMethod};
 	
 	my $domain_id = params->{'domain_id'};
 	my $domainInstance = undef;
@@ -1016,54 +1090,68 @@ sub _getGeneExpressionByAnalysesCommon($$) {
 	}
 	
 	if(defined($domainInstance)) {
-		my $content = request->body;
+		my $content = request->method() eq 'POST' ? request->body : params->{$id_attr};
 		
 		# Cleaning up the input
 		my $p_deserialized_ids = _inputDeserialize($content);
 		
-		my($idColumnName,$p_compound_analysis_ids) = $domainInstance->$dataMethodName($p_deserialized_ids);
+		my($idColumnName,$p_compound_analysis_ids) = $domainInstance->$dataMethodName($p_deserialized_ids,$p_experimentFilterMethod);
 		
-		my $p_data = $domainInstance->getGeneExpressionFromCompoundAnalysisIds($p_compound_analysis_ids);
-		
-		my $data = $p_serializeMethod->($idColumnName,$p_data);
-		
-		return send_file(\$data,content_type => 'text/tab-separated-values', charset => 'utf-8');
+		if(scalar(@{$p_compound_analysis_ids}) > 0) {
+			delayed {
+				content_type 'text/tab-separated-values; charset=UTF-8';
+				
+				flush;
+				
+				my $p_tabSerializeOnce = $p_serializeGeneratorMethod->($idColumnName);
+				
+				$domainInstance->$queryMethodName($p_compound_analysis_ids,$p_tabSerializeOnce);
+				
+				done;
+			};
+		} else {
+			send_error("No matching experiment for input ids",404);
+		}
 	} else {
 		send_error("Domain $domain_id not found",404);
 	}
 }
 
 sub getGeneExpressionByAnalysesTab {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundAnalysisIds',\&_tabSerialize);
-}
-
-sub getGeneExpressionByAnalysesMatrix {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundAnalysisIds',\&_matrixSerialize);
+	return _getQueryByAnalysesCommon(['analysis_id','getCompoundAnalysisIdsFromCompoundAnalysisIds',\&EPICO::REST::Backend::_FilterEntryByExpressionAnalysisMetadata],'getGeneExpressionFromCompoundAnalysisIds',\&_tabSerializeGenerator);
 }
 
 sub getGeneExpressionByExperimentsTab {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundExperimentIds',\&_tabSerialize);
-}
-
-sub getGeneExpressionByExperimentsMatrix {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundExperimentIds',\&_matrixSerialize);
+	return _getQueryByAnalysesCommon(['expression_id','getCompoundAnalysisIdsFromCompoundExperimentIds',\&EPICO::REST::Backend::_FilterEntryByExpressionAnalysisMetadata],'getGeneExpressionFromCompoundAnalysisIds',\&_tabSerializeGenerator);
 }
 
 sub getGeneExpressionBySamplesTab {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundSampleIds',\&_tabSerialize);
-}
-
-sub getGeneExpressionBySamplesMatrix {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundSampleIds',\&_matrixSerialize);
+	return _getQueryByAnalysesCommon(['sample_id','getCompoundAnalysisIdsFromCompoundSampleIds',\&EPICO::REST::Backend::_FilterEntryByExpressionAnalysisMetadata],'getGeneExpressionFromCompoundAnalysisIds',\&_tabSerializeGenerator);
 }
 
 sub getGeneExpressionByDonorsTab {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundDonorIds',\&_tabSerialize);
+	return _getQueryByAnalysesCommon(['donor_id','getCompoundAnalysisIdsFromCompoundDonorIds',\&EPICO::REST::Backend::_FilterEntryByExpressionAnalysisMetadata],'getGeneExpressionFromCompoundAnalysisIds',\&_tabSerializeGenerator);
 }
 
-sub getGeneExpressionByDonorsMatrix {
-	return _getGeneExpressionByAnalysesCommon('getCompoundAnalysisIdsFromCompoundDonorIds',\&_matrixSerialize);
+
+
+sub getRegulatoryRegionsByAnalysesTab {
+	return _getQueryByAnalysesCommon(['analysis_id','getCompoundAnalysisIdsFromCompoundAnalysisIds',\&EPICO::REST::Backend::_FilterEntryByRegulatoryRegionsMetadata],'getRegulatoryRegionsFromCompoundAnalysisIds',\&_rregSerializeGenerator);
 }
+
+sub getRegulatoryRegionsByExperimentsTab {
+	return _getQueryByAnalysesCommon(['experiment_id','getCompoundAnalysisIdsFromCompoundExperimentIds',\&EPICO::REST::Backend::_FilterEntryByRegulatoryRegionsMetadata],'getRegulatoryRegionsFromCompoundAnalysisIds',\&_rregSerializeGenerator);
+}
+
+sub getRegulatoryRegionsBySamplesTab {
+	return _getQueryByAnalysesCommon(['sample_id','getCompoundAnalysisIdsFromCompoundSampleIds',\&EPICO::REST::Backend::_FilterEntryByRegulatoryRegionsMetadata],'getRegulatoryRegionsFromCompoundAnalysisIds',\&_rregSerializeGenerator);
+}
+
+sub getRegulatoryRegionsByDonorsTab {
+	return _getQueryByAnalysesCommon(['donor_id','getCompoundAnalysisIdsFromCompoundDonorIds',\&EPICO::REST::Backend::_FilterEntryByRegulatoryRegionsMetadata],'getRegulatoryRegionsFromCompoundAnalysisIds',\&_rregSerializeGenerator);
+}
+
+
 
 prefix '/:domain_id' => sub {
 	get ''	=>	\&getDomain;
@@ -1117,34 +1205,44 @@ prefix '/:domain_id' => sub {
 		prefix '/byDonors' => sub {
 			post ''	=>	\&getGeneExpressionByDonorsTab;
 			options ''	=>	\&preflight;
-			post '/table'	=>	\&getGeneExpressionByDonorsTab;
-			options '/table'	=>	\&preflight;
-			post '/matrix'	=>	\&getGeneExpressionByDonorsMatrix;
-			options '/matrix'	=>	\&preflight;
+			get '/:donor_id'	=>	\&getGeneExpressionByDonorsTab;
 		};
 		prefix '/bySamples' => sub {
 			post ''	=>	\&getGeneExpressionBySamplesTab;
 			options ''	=>	\&preflight;
-			post '/table'	=>	\&getGeneExpressionBySamplesTab;
-			options '/table'	=>	\&preflight;
-			post '/matrix'	=>	\&getGeneExpressionBySamplesMatrix;
-			options '/matrix'	=>	\&preflight;
+			get '/:sample_id'	=>	\&getGeneExpressionBySamplesTab;
 		};
 		prefix '/byExperiments' => sub {
 			post ''	=>	\&getGeneExpressionByExperimentsTab;
 			options ''	=>	\&preflight;
-			post '/table'	=>	\&getGeneExpressionByExperimentsTab;
-			options '/table'	=>	\&preflight;
-			post '/matrix'	=>	\&getGeneExpressionByExperimentsMatrix;
-			options '/matrix'	=>	\&preflight;
+			get '/:experiment_id'	=>	\&getGeneExpressionByExperimentsTab;
 		};
 		prefix '/byAnalyses' => sub {
 			post ''	=>	\&getGeneExpressionByAnalysesTab;
 			options ''	=>	\&preflight;
-			post '/table'	=>	\&getGeneExpressionByAnalysesTab;
-			options '/table'	=>	\&preflight;
-			post '/matrix'	=>	\&getGeneExpressionByAnalysesMatrix;
-			options '/matrix'	=>	\&preflight;
+			get '/:analysis_id'	=>	\&getGeneExpressionByAnalysesTab;
+		};
+	};
+	prefix '/analysis/query/regulatory_regions' => sub {
+		prefix '/byDonors' => sub {
+			post ''	=>	\&getRegulatoryRegionsByDonorsTab;
+			options ''	=>	\&preflight;
+			get '/:donor_id'	=>	\&getRegulatoryRegionsByDonorsTab;
+		};
+		prefix '/bySamples' => sub {
+			post ''	=>	\&getRegulatoryRegionsBySamplesTab;
+			options ''	=>	\&preflight;
+			get '/:sample_id'	=>	\&getRegulatoryRegionsBySamplesTab;
+		};
+		prefix '/byExperiments' => sub {
+			post ''	=>	\&getRegulatoryRegionsByExperimentsTab;
+			options ''	=>	\&preflight;
+			get '/:experiment_id'	=>	\&getRegulatoryRegionsByExperimentsTab;
+		};
+		prefix '/byAnalyses' => sub {
+			post ''	=>	\&getRegulatoryRegionsByAnalysesTab;
+			options ''	=>	\&preflight;
+			get '/:analysis_id'	=>	\&getRegulatoryRegionsByAnalysesTab;
 		};
 	};
 	prefix '/genomic_layout' => sub {

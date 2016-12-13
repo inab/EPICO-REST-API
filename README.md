@@ -78,25 +78,29 @@ Endpoints
 Next methods expect a tabular input, and return tables. They can be called from command line like this:
 
 ```
-curl -X POST -T 'identifiers.txt' -o results.txt http://localhost:5000/EPICO:2016-08/analysis/query/gene_expression/byAnalyses/matrix
+curl -X POST -T 'identifiers.txt' -o results.txt http://localhost:5000/EPICO:2016-08/analysis/query/gene_expression/byAnalyses
 ```
 
 * POST /{domain}/analysis/query/gene_expression/byDonors
-* POST /{domain}/analysis/query/gene_expression/byDonors/table
-
-* POST /{domain}/analysis/query/gene_expression/byDonors/matrix
+* GET /{domain}/analysis/query/gene_expression/byDonors/{donor_id}
 
 * POST /{domain}/analysis/query/gene_expression/bySamples
-* POST /{domain}/analysis/query/gene_expression/bySamples/table
-
-* POST /{domain}/analysis/query/gene_expression/bySamples/matrix
+* GET /{domain}/analysis/query/gene_expression/bySamples/{sample_id}
 
 * POST /{domain}/analysis/query/gene_expression/byExperiments
-* POST /{domain}/analysis/query/gene_expression/byExperiments/table
-
-* POST /{domain}/analysis/query/gene_expression/byExperiments/matrix
+* GET /{domain}/analysis/query/gene_expression/byExperiments/{experiment_id}
 
 * POST /{domain}/analysis/query/gene_expression/byAnalyses
-* POST /{domain}/analysis/query/gene_expression/byAnalyses/table
+* GET /{domain}/analysis/query/gene_expression/byAnalyses/{analysis_id}
 
-* POST /{domain}/analysis/query/gene_expression/byAnalyses/matrix
+* POST /{domain}/analysis/query/regulatory_regions/byDonors
+* GET /{domain}/analysis/query/regulatory_regions/byDonors/{donor_id}
+
+* POST /{domain}/analysis/query/regulatory_regions/bySamples
+* GET /{domain}/analysis/query/regulatory_regions/bySamples/{sample_id}
+
+* POST /{domain}/analysis/query/regulatory_regions/byExperiments
+* GET /{domain}/analysis/query/regulatory_regions/byExperiments/{experiment_id}
+
+* POST /{domain}/analysis/query/regulatory_regions/byAnalyses
+* GET /{domain}/analysis/query/regulatory_regions/byAnalyses/{analysis_id}

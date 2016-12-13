@@ -53,6 +53,9 @@ use constant {
 	SAMPLE_CONCEPT_TYPE	=>	SAMPLE_TRACKING_DATA_CONCEPT_DOMAIN_NAME() . '.' . SAMPLE_CONCEPT_NAME(),
 	EXPRESSION_ANALYSIS_METADATA_CONCEPT_TYPE	=>	EXPRESSION_CONCEPT_DOMAIN_NAME() . '.' . METADATA_CONCEPT_NAME(),
 	GENE_EXPRESSION_ANALYSIS_DATA_CONCEPT_TYPE	=>	EXPG_CONCEPT_DOMAIN_NAME() . '.' . EXPG_CONCEPT_NAME(),
+	
+	REGULATORY_REGIONS_METADATA_CONCEPT_TYPE	=>	RREG_CONCEPT_DOMAIN_NAME() . '.' . METADATA_CONCEPT_NAME(),
+	REGULATORY_REGIONS_DATA_CONCEPT_TYPE	=>	RREG_CONCEPT_DOMAIN_NAME() . '.' . RREG_CONCEPT_NAME(),
 };
 
 use constant {
@@ -190,7 +193,11 @@ sub getAnalysisIdsFromExperimentIds($$) {
 	return $self->getAnalysisMetadata($analysis_id,boolean::true,EXPERIMENT_ID(),$p_filterFunc);
 }
 
-sub getGeneExpressionFromCompoundAnalysisIds(\@) {
+sub getGeneExpressionFromCompoundAnalysisIds(\@;\&) {
+	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
+}
+
+sub getRegulatoryRegionsFromCompoundAnalysisIds(\@;\&) {
 	Carp::croak((caller(0))[3]. 'is an unimplemented method!');
 }
 
@@ -259,6 +266,8 @@ sub _fromAToZ(\@\@) {
 	my $p_compound_input_ids = $p_compound_ids;
 	
 	foreach my $p_input_output_method (@{$p_input_output_methods}) {
+		last  if(scalar(@{$p_compound_input_ids}) == 0);
+		
 		my($input_id_name,$output_id_name,$from_to_method_name,$p_filter_method) = @{$p_input_output_method};
 		
 		my @input_ids = ();
@@ -311,43 +320,55 @@ sub _FilterEntryByGeneExpressionAnalysisData($) {
 	return exists($p_entry->{TYPE_ID()}) && $p_entry->{TYPE_ID()} eq GENE_EXPRESSION_ANALYSIS_DATA_CONCEPT_TYPE();
 }
 
-sub getCompoundAnalysisIdsFromCompoundExperimentIds(\@) {
+sub _FilterEntryByRegulatoryRegionsMetadata($) {
+	my($p_entry) = @_;
+	
+	return exists($p_entry->{TYPE_ID()}) && $p_entry->{TYPE_ID()} eq REGULATORY_REGIONS_METADATA_CONCEPT_TYPE();
+}
+
+sub _FilterEntryByRegulatoryRegionsData($) {
+	my($p_entry) = @_;
+	
+	return exists($p_entry->{TYPE_ID()}) && $p_entry->{TYPE_ID()} eq REGULATORY_REGIONS_DATA_CONCEPT_TYPE();
+}
+
+sub getCompoundAnalysisIdsFromCompoundExperimentIds(\@;$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
 	
-	my($p_compound_experiment_ids) = @_;
+	my($p_compound_experiment_ids,$p_filterFunc) = @_;
 		
 	return (EXPERIMENT_ID(),$self->_fromAToZ($p_compound_experiment_ids,[
-			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',\&_FilterEntryByExpressionAnalysisMetadata],
+			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',$p_filterFunc],
 		]));
 }
 
-sub getCompoundAnalysisIdsFromCompoundSampleIds(\@) {
+sub getCompoundAnalysisIdsFromCompoundSampleIds(\@;$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
 	
-	my($p_compound_sample_ids) = @_;
+	my($p_compound_sample_ids,$p_filterFunc) = @_;
 		
 	return (SAMPLE_ID(),$self->_fromAToZ($p_compound_sample_ids,[
 			[ANALYZED_SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
-			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',\&_FilterEntryByExpressionAnalysisMetadata],
+			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',$p_filterFunc],
 		]));
 }
 
-sub getCompoundAnalysisIdsFromCompoundDonorIds(\@) {
+sub getCompoundAnalysisIdsFromCompoundDonorIds(\@;$) {
 	my $self = shift;
 	
 	Carp::croak((caller(0))[3].' is an instance method!')  unless(ref($self));
 	
-	my($p_compound_donor_ids) = @_;
+	my($p_compound_donor_ids,$p_filterFunc) = @_;
 		
 	return (DONOR_ID(),$self->_fromAToZ($p_compound_donor_ids,[
 			[DONOR_ID(),SPECIMEN_ID(),'getSpecimenIdsFromDonorIds',undef],
 			[SPECIMEN_ID(),SAMPLE_ID(),'getSampleIdsFromSpecimenIds',undef],
 			[ANALYZED_SAMPLE_ID(),EXPERIMENT_ID(),'getExperimentIdsFromSampleIds',undef],
-			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',\&_FilterEntryByExpressionAnalysisMetadata],
+			[EXPERIMENT_ID(),ANALYSIS_ID(),'getAnalysisIdsFromExperimentIds',$p_filterFunc],
 		]));
 }
 
