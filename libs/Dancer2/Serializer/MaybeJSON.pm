@@ -17,13 +17,17 @@ sub to_json { __PACKAGE__->serialize(@_) }
 sub decode_json {
     my ( $entity ) = @_;
 
+    	# This is needed due a Perl bug related to return inside a eval block
+	my $retval;
 	eval {
-	    return JSON::MaybeXS::decode_json($entity);
+	    $retval = JSON::MaybeXS::decode_json($entity);
 	};
 
 	if($@) {
 		warn "Returning raw, due $@";
 		return $entity;
+	} else {
+		return $retval;
 	}
 }
 
@@ -51,13 +55,17 @@ sub deserialize {
     my ( $self, $entity, $options ) = @_;
 
     $options->{utf8} = 1 if !defined $options->{utf8};
+    	# This is needed due a Perl bug related to return inside a eval block
+    	my $retval;
 	eval {
-	    return JSON::MaybeXS->new($options)->decode($entity);
+	    $retval = JSON::MaybeXS->new($options)->decode($entity);
 	};
-
+	
 	if($@) {
 		warn "Returning raw, due $@";
 		return $entity;
+	} else {
+		return $retval;
 	}
 }
 
