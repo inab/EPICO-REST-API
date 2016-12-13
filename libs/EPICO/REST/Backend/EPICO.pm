@@ -502,7 +502,7 @@ sub _getFromConcept($$;$$$$) {
 	my($conceptDomainName, $conceptName,$key_id,$onlyIds,$attr_name,$p_filterFunc) = @_;
 	
 	my $termQuery = undef;
-	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
+	if(defined($key_id) && (ref($key_id) || $key_id ne ALL_IDS())) {
 		$termQuery = ref($key_id) ? 'terms':'term';
 	}
 	
@@ -631,7 +631,7 @@ sub _getFromCollection($;$$$\&\&) {
 	my($collectionName,$key_id,$onlyIds,$attr_name,$p_filterFunc,$p_renderFunc) = @_;
 	
 	my $termQuery = undef;
-	if(defined($key_id) && (ref($key_id) || $key_id eq ALL_IDS())) {
+	if(defined($key_id) && (ref($key_id) || $key_id ne ALL_IDS())) {
 		$termQuery = ref($key_id) ? 'terms':'term';
 	}
 	
