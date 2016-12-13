@@ -316,7 +316,7 @@ sub getCVterms() {
 		$p_theUris = request->data;
 		send_error("Expected an input array of strings",400)  unless(ref($p_theUris) eq 'ARRAY');
 		foreach my $term (@{$p_theUris}) {
-			send_error("Expected an input array of strings",400)  unless(defined($term) && ref($term) eq '');
+			send_error("Expected an input array of strings (an element is not a string)",400)  unless(defined($term) && ref($term) eq '');
 		}
 	}
 	
@@ -359,7 +359,7 @@ sub getFilteredCVterms() {
 		
 		send_error("Expected an input array of strings",400)  unless(ref($p_theTerms) eq 'ARRAY');
 		foreach my $term (@{$p_theTerms}) {
-			send_error("Expected an input array of strings",400)  unless(defined($term) && ref($term) eq '');
+			send_error("Expected an input array of strings (an element is not a string)",400)  unless(defined($term) && ref($term) eq '');
 		}
 		
 		my $cvTerms = $domainInstance->getFilteredCVterms($p_theTerms);
