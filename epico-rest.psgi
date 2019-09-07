@@ -12,7 +12,6 @@ use JSON -no_export;
 
 use FindBin;
 use lib File::Spec->catfile($FindBin::Bin,"libs");
-use lib File::Spec->catfile($FindBin::Bin,"BP-Schema-tools","lib");
 
 package EPICO::REST::Common;
 

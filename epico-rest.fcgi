@@ -9,7 +9,9 @@ BEGIN { $ENV{DANCER_APPHANDLER} = 'PSGI';}
 use Dancer2;
 use Dancer2::FileUtils;
 use File::Spec;
+
 use FindBin;
+use lib File::Spec->catfile($FindBin::Bin,"deps");
 
 # For some reason Apache SetEnv directives don't propagate
 # correctly to the dispatchers, so forcing PSGI and env here

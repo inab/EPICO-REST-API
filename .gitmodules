@@ -1,4 +1,0 @@
-[submodule "BP-Schema-tools"]
-	path = BP-Schema-tools
-	url = https://github.com/inab/BP-Schema-tools.git
-	branch = develop
