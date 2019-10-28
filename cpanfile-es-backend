@@ -6,7 +6,7 @@ requires 'BP::Model', 'v1.1.1', url => 'https://github.com/inab/BP-Model/archive
 
 requires 'BP::Loader', 'v1.0.3', url => 'https://github.com/inab/BP-Schema-tools/archive/v1.0.3.tar.gz';
 
-requires 'EPICO::REST::Backend::EPICO', 'v1.2.0', url => 'https://github.com/inab/EPICO-ES-backend/archive/v1.2.0.tar.gz';
+requires 'EPICO::REST::Backend::EPICO', 'v1.3.0', url => 'https://github.com/inab/EPICO-ES-backend/archive/v1.3.0.tar.gz';
 
 # This is not needed in this project
 #requires 'BP::DCCLoader', 'v1.0.1', url => 'https://github.com/inab/EPICO-data-loading-scripts/archive/v1.0.1.tar.gz';

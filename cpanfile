@@ -18,4 +18,4 @@ requires 'Scalar::Util';
 
 # Dependencies by EPICO API
 
-requires 'EPICO::REST::Backend', 'v1.0.1', url => 'https://github.com/inab/EPICO-abstract-backend/archive/v1.0.1.tar.gz';
+requires 'EPICO::REST::Backend', 'v2.0.0', url => 'https://github.com/inab/EPICO-abstract-backend/archive/v2.0.0.tar.gz';

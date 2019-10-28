@@ -30,77 +30,82 @@ Endpoints
 
 * POST /{domain}/model/CV/{conceptDomain}/{concept}/{column}/terms	It returns all the terms from the controlled vocabularies associated to the column, filtered by input terms
 
-* GET /{domain}/sdata	It returns the identifiers of all the donors, specimens, samples and experiments registered in the database.
+* GET /{domain}/assemblies	It returns the identifiers of all the available assemblies
 
-* GET /{domain}/sdata/_all	It returns all the donors, specimens, samples and experiments registered in the database.
+* GET /{domain}/assemblies/{assembly_id}	It returns the detailed information about this assembly
 
-* GET /{domain}/sdata/donor	It returns the identifiers of all the registered donors.
+* GET /{domain}/genome/{assembly_id}/sdata	It returns the identifiers of all the donors, specimens, samples and experiments registered in the database.
 
-* GET /{domain}/sdata/donor/{donor_id}	It returns the donor whose donor id is this. Special '_all' donor id returns all the donors.
+* GET /{domain}/genome/{assembly_id}sdata/_all	It returns all the donors, specimens, samples and experiments registered in the database.
 
-* GET /{domain}/sdata/specimen	It returns the identifiers of all the registered specimens.
+* GET /{domain}/genome/{assembly_id}sdata/donor	It returns the identifiers of all the registered donors.
 
-* GET /{domain}/sdata/specimen/{specimen_id}	It returns the specimen whose specimen id is this. Special '_all' specimen id returns all the specimens.
+* GET /{domain}/genome/{assembly_id}sdata/donor/{donor_id}	It returns the donor whose donor id is this. Special '_all' donor id returns all the donors.
 
-* GET /{domain}/sdata/sample	It returns the identifiers of all the registered samples.
+* GET /{domain}/genome/{assembly_id}sdata/specimen	It returns the identifiers of all the registered specimens.
 
-* GET /{domain}/sdata/sample/{sample_id}	It returns the sample whose sample id is this. Special '_all' sample id returns all the samples.
+* GET /{domain}/genome/{assembly_id}sdata/specimen/{specimen_id}	It returns the specimen whose specimen id is this. Special '_all' specimen id returns all the specimens.
 
-* GET /{domain}/sdata/experiment	It returns the identifiers of all the registered experiments.
+* GET /{domain}/genome/{assembly_id}sdata/sample	It returns the identifiers of all the registered samples.
 
-* GET /{domain}/sdata/experiment/{experiment_id}	It returns the experiment whose experiment id is this. Special '_all' experiment id returns all the experiments.
+* GET /{domain}/genome/{assembly_id}sdata/sample/{sample_id}	It returns the sample whose sample id is this. Special '_all' sample id returns all the samples.
 
-* GET /{domain}/analysis/metadata	It returns the identifiers of all the registered analysis.
+* GET /{domain}/genome/{assembly_id}sdata/experiment	It returns the identifiers of all the registered experiments.
 
-* GET /{domain}/analysis/metadata/{analysis_id}	It returns the analysis metadata whose analysis id is this. Special '_all' analysis id returns all the analysis.
+* GET /{domain}/genome/{assembly_id}sdata/experiment/{experiment_id}	It returns the experiment whose experiment id is this. Special '_all' experiment id returns all the experiments.
 
-* GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}
-* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
+* GET /{domain}/genome/{assembly_id}analysis/metadata	It returns the identifiers of all the registered analysis.
 
-* GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stream
-* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stream	It returns a handler to fetch results chunk by chunk
+* GET /{domain}/genome/{assembly_id}analysis/metadata/{analysis_id}	It returns the analysis metadata whose analysis id is this. Special '_all' analysis id returns all the analysis.
 
-* POST /{domain}/analysis/data/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
+* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}
+* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
 
-* GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/count
-* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/count	It counts the number of related results per analysis
+* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stream
+* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stream	It returns a handler to fetch results chunk by chunk
 
-* GET /{domain}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stats
-* GET /{domain}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stats	It gives detailed stats	(only for BLUEPRINT)
+* POST /{domain}/genome/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
+* POST /{domain}/genome/{assembly_id}/analysis/data/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
 
-* GET /{domain}/genomic_layout/{chromosome}/{chromosome_start}/{chromosome_end}
-* GET /{domain}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/count
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/count	It counts the number of related results per analysis
 
-* GET /{domain}/features?q=	It returns the features, their types and their coordinates matching the input query (which can be an identifier, for instance)
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stats
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stats	It gives detailed stats	(only for BLUEPRINT)
 
-* GET /{domain}/features/suggest?q=	It returns the features suggested by the input prefix query (useful for autocompletion)
+* GET /{domain}/genome/{assembly_id}/genomic_layout/{chromosome}/{chromosome_start}/{chromosome_end}
+* GET /{domain}/genome/{assembly_id}/genomic_layout/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the genomic layout features found in the range
+
+* GET /{domain}/genome/{assembly_id}/features?q=	It returns the features, their types and their coordinates matching the input query (which can be an identifier, for instance)
+
+* GET /{domain}/genome/{assembly_id}/features/suggest?q=	It returns the features suggested by the input prefix query (useful for autocompletion)
 
 Next methods expect a tabular input, and return tables. They can be called from command line like this:
 
 ```
-curl -X POST -T 'identifiers.txt' -o results.txt http://localhost:5000/EPICO:2016-08/analysis/query/gene_expression/byAnalyses
+curl -X POST -T 'identifiers.txt' -o results.txt http://localhost:5000/EPICO:2016-08/genome/grch38/analysis/query/gene_expression/byAnalyses
 ```
 
-* POST /{domain}/analysis/query/gene_expression/byDonors
-* GET /{domain}/analysis/query/gene_expression/byDonors/{donor_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byDonors
+* GET /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byDonors/{donor_id}
 
-* POST /{domain}/analysis/query/gene_expression/bySamples
-* GET /{domain}/analysis/query/gene_expression/bySamples/{sample_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/gene_expression/bySamples
+* GET /{domain}/genome/{assembly_id}/analysis/query/gene_expression/bySamples/{sample_id}
 
-* POST /{domain}/analysis/query/gene_expression/byExperiments
-* GET /{domain}/analysis/query/gene_expression/byExperiments/{experiment_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byExperiments
+* GET /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byExperiments/{experiment_id}
 
-* POST /{domain}/analysis/query/gene_expression/byAnalyses
-* GET /{domain}/analysis/query/gene_expression/byAnalyses/{analysis_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byAnalyses
+* GET /{domain}/genome/{assembly_id}/analysis/query/gene_expression/byAnalyses/{analysis_id}
 
-* POST /{domain}/analysis/query/regulatory_regions/byDonors
-* GET /{domain}/analysis/query/regulatory_regions/byDonors/{donor_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byDonors
+* GET /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byDonors/{donor_id}
 
-* POST /{domain}/analysis/query/regulatory_regions/bySamples
-* GET /{domain}/analysis/query/regulatory_regions/bySamples/{sample_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/bySamples
+* GET /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/bySamples/{sample_id}
 
-* POST /{domain}/analysis/query/regulatory_regions/byExperiments
-* GET /{domain}/analysis/query/regulatory_regions/byExperiments/{experiment_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byExperiments
+* GET /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byExperiments/{experiment_id}
 
-* POST /{domain}/analysis/query/regulatory_regions/byAnalyses
-* GET /{domain}/analysis/query/regulatory_regions/byAnalyses/{analysis_id}
+* POST /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byAnalyses
+* GET /{domain}/genome/{assembly_id}/analysis/query/regulatory_regions/byAnalyses/{analysis_id}

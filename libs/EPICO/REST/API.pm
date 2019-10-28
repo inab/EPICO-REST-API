@@ -57,6 +57,7 @@ sub getDomainInternal($\@) {
 	my($domain_id,$p_domain) = @_;
 	
 	return {
+		'api'	=>	'v2',
 		'domain_id'	=>	$domain_id,
 		'domain_name'	=>	$p_domain->[EPICO::REST::Common::DOMAIN_NAME],
 		'release'	=>	$p_domain->[EPICO::REST::Common::RELEASE],
@@ -292,6 +293,46 @@ sub getCVtermsFromColumn() {
 	}
 }
 
+sub getAssemblies() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getAssemblies(undef,1);
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
+sub getAssembly() {
+	my $domain_id = params->{'domain_id'};
+	my $domainInstance = undef;
+	
+	eval {
+		$domainInstance = EPICO::REST::Common::getDomain($domain_id);
+	};
+	
+	if($@) {
+		send_error("Domain $domain_id could not be instantiated",500);
+		print STDERR "ERROR: $@\n";
+	}
+	
+	if(defined($domainInstance)) {
+		return $domainInstance->getAssemblies(params->{'assembly_id'});
+	} else {
+		send_error("Domain $domain_id not found",404);
+	}
+}
+
 sub getSampleTrackingDataIds() {
 	my $domain_id = params->{'domain_id'};
 	my $domainInstance = undef;
@@ -306,9 +347,9 @@ sub getSampleTrackingDataIds() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSampleTrackingData(1);
+		return $domainInstance->getSampleTrackingData(params->{'assembly_id'},1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -326,9 +367,9 @@ sub getSampleTrackingData() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSampleTrackingData();
+		return $domainInstance->getSampleTrackingData(params->{'assembly_id'});
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -346,9 +387,9 @@ sub getDonors() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDonors(undef,1);
+		return $domainInstance->getDonors(params->{'assembly_id'},undef,1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -366,9 +407,9 @@ sub getDonor() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDonors(params->{'donor_id'});
+		return $domainInstance->getDonors(params->{'assembly_id'},params->{'donor_id'});
 	} else {
-		send_error("Donor ".params->{'donor_id'}." in domain $domain_id not found",404);
+		send_error("Donor ".params->{'donor_id'}." from assembly ".params->{'assembly_id'}." in domain $domain_id not found",404);
 	}
 }
 
@@ -386,9 +427,9 @@ sub getSpecimens() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSpecimens(undef,1);
+		return $domainInstance->getSpecimens(params->{'assembly_id'},undef,1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -406,9 +447,9 @@ sub getSpecimen() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSpecimens(params->{'specimen_id'});
+		return $domainInstance->getSpecimens(params->{'assembly_id'},params->{'specimen_id'});
 	} else {
-		send_error("Specimen ".params->{'specimen_id'}." in domain $domain_id not found",404);
+		send_error("Specimen ".params->{'specimen_id'}." from assembly ".params->{'assembly_id'}." in domain $domain_id not found",404);
 	}
 }
 
@@ -426,9 +467,9 @@ sub getSamples() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSamples(undef,1);
+		return $domainInstance->getSamples(params->{'assembly_id'},undef,1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -446,9 +487,9 @@ sub getSample() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getSamples(params->{'sample_id'});
+		return $domainInstance->getSamples(params->{'assembly_id'},params->{'sample_id'});
 	} else {
-		send_error("Sample ".params->{'sample_id'}." in domain $domain_id not found",404);
+		send_error("Sample ".params->{'sample_id'}." from assembly ".params->{'assembly_id'}." in domain $domain_id not found",404);
 	}
 }
 
@@ -466,9 +507,9 @@ sub getExperiments() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getExperiments(undef,1);
+		return $domainInstance->getExperiments(params->{'assembly_id'},undef,1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -486,9 +527,9 @@ sub getExperiment() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getExperiments(params->{'experiment_id'});
+		return $domainInstance->getExperiments(params->{'assembly_id'},params->{'experiment_id'});
 	} else {
-		send_error("Experiment ".params->{'experiment_id'}." in domain $domain_id not found",404);
+		send_error("Experiment ".params->{'experiment_id'}." from assembly ".params->{'assembly_id'}." in domain $domain_id not found",404);
 	}
 }
 
@@ -506,9 +547,9 @@ sub getAnalysisMetadatas() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getAnalysisMetadata(undef,1);
+		return $domainInstance->getAnalysisMetadata(params->{'assembly_id'},undef,1);
 	} else {
-		send_error("Domain $domain_id not found",404);
+		send_error("Domain $domain_id or assembly ".params->{'assembly_id'}." not found",404);
 	}
 }
 
@@ -526,14 +567,14 @@ sub getAnalysisMetadata() {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getAnalysisMetadata(params->{'analysis_id'});
+		return $domainInstance->getAnalysisMetadata(params->{'assembly_id'},params->{'analysis_id'});
 	} else {
-		send_error("Analysis metadata ".params->{'analysis_id'}." in domain $domain_id not found",404);
+		send_error("Analysis metadata ".params->{'analysis_id'}." from assembly ".params->{'assembly_id'}." in domain $domain_id not found",404);
 	}
 }
 
 sub getDataFromCoordsCommon(@) {
-	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my($domain_id, $assembly_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
 	
 	eval {
@@ -546,14 +587,14 @@ sub getDataFromCoordsCommon(@) {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDataFromCoords($chromosome,$chromosome_start,$chromosome_end);
+		return $domainInstance->getDataFromCoords($assembly_id,$chromosome,$chromosome_start,$chromosome_end);
 	} else {
-		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." from assembly $assembly_id in domain $domain_id not found",404);
 	}
 }
 
 sub getDataFromCoords() {
-	return getDataFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+	return getDataFromCoordsCommon((params->{'domain_id'},params->{'assembly_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
 }
 
 
@@ -562,7 +603,7 @@ sub getDataFromCoordsAlt() {
 }
 
 sub getDataStreamFromCoordsCommon(@) {
-	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my($domain_id, $assembly_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
 	
 	eval {
@@ -575,14 +616,14 @@ sub getDataStreamFromCoordsCommon(@) {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDataStreamFromCoords($chromosome,$chromosome_start,$chromosome_end);
+		return $domainInstance->getDataStreamFromCoords($assembly_id,$chromosome,$chromosome_start,$chromosome_end);
 	} else {
-		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+		send_error("Data on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." from assembly $assembly_id in domain $domain_id not found",404);
 	}
 }
 
 sub getDataStreamFromCoords() {
-	return getDataStreamFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+	return getDataStreamFromCoordsCommon((params->{'domain_id'},params->{'assembly_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
 }
 
 
@@ -619,7 +660,7 @@ sub fetchDataStream() {
 }
 
 sub getDataCountFromCoordsCommon(@) {
-	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my($domain_id, $assembly_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
 	
 	eval {
@@ -632,14 +673,14 @@ sub getDataCountFromCoordsCommon(@) {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDataCountFromCoords($chromosome,$chromosome_start,$chromosome_end);
+		return $domainInstance->getDataCountFromCoords($assembly_id, $chromosome,$chromosome_start,$chromosome_end);
 	} else {
-		send_error("Data count on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+		send_error("Data count on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." from assembly $assembly_id in domain $domain_id not found",404);
 	}
 }
 
 sub getDataCountFromCoords() {
-	return getDataCountFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+	return getDataCountFromCoordsCommon((params->{'domain_id'},params->{'assembly_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
 }
 
 
@@ -648,7 +689,7 @@ sub getDataCountFromCoordsAlt() {
 }
 
 sub getDataStatsFromCoordsCommon(@) {
-	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my($domain_id, $assembly_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
 	
 	eval {
@@ -661,14 +702,14 @@ sub getDataStatsFromCoordsCommon(@) {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getDataStatsFromCoords($chromosome,$chromosome_start,$chromosome_end);
+		return $domainInstance->getDataStatsFromCoords($assembly_id,$chromosome,$chromosome_start,$chromosome_end);
 	} else {
-		send_error("Data stats on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+		send_error("Data stats on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." from assembly $assembly_id in domain $domain_id not found",404);
 	}
 }
 
 sub getDataStatsFromCoords() {
-	return getDataStatsFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+	return getDataStatsFromCoordsCommon((params->{'domain_id'},params->{'assembly_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
 }
 
 
@@ -677,7 +718,7 @@ sub getDataStatsFromCoordsAlt() {
 }
 
 sub getGenomicLayoutFromCoordsCommon(@) {
-	my($domain_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
+	my($domain_id, $assembly_id, $chromosome,$chromosome_start,$chromosome_end) = @_;
 	my $domainInstance = undef;
 	
 	eval {
@@ -690,14 +731,14 @@ sub getGenomicLayoutFromCoordsCommon(@) {
 	}
 	
 	if(defined($domainInstance)) {
-		return $domainInstance->getGenomicLayoutFromCoords($chromosome,$chromosome_start,$chromosome_end);
+		return $domainInstance->getGenomicLayoutFromCoords($assembly_id,$chromosome,$chromosome_start,$chromosome_end);
 	} else {
-		send_error("Genomic layout on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." in domain $domain_id not found",404);
+		send_error("Genomic layout on coordinates ".$chromosome.':'.$chromosome_start.'-'.$chromosome_end." from assembly $assembly_id in domain $domain_id not found",404);
 	}
 }
 
 sub getGenomicLayoutFromCoords() {
-	return getGenomicLayoutFromCoordsCommon((params->{'domain_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
+	return getGenomicLayoutFromCoordsCommon((params->{'domain_id'},params->{'assembly_id'},params->{'chromosome'},params->{'chromosome_start'},params->{'chromosome_end'}));
 }
 
 
@@ -719,6 +760,7 @@ sub queryFeatures() {
 	}
 	
 	if(defined($domainInstance)) {
+		my $assembly_id = params->{'assembly_id'};
 		my $queryString = exists(query_parameters->{'q'}) ? query_parameters->{'q'} : undef;
 		
 		if(defined($queryString)) {
@@ -728,7 +770,7 @@ sub queryFeatures() {
 		}
 		
 		send_error("Empty query",400)  unless(defined($queryString));
-		return $domainInstance->queryFeatures($queryString);
+		return $domainInstance->queryFeatures($assembly_id,$queryString);
 	} else {
 		send_error("Domain $domain_id not found",404);
 	}
@@ -748,6 +790,7 @@ sub suggestFeatures() {
 	}
 	
 	if(defined($domainInstance)) {
+		my $assembly_id = params->{'assembly_id'};
 		my $queryString = exists(query_parameters->{'q'}) ? query_parameters->{'q'} : undef;
 		
 		if(defined($queryString)) {
@@ -757,7 +800,7 @@ sub suggestFeatures() {
 		}
 		
 		send_error("Empty query",400)  unless(defined($queryString));
-		return $domainInstance->suggestFeatures($queryString);
+		return $domainInstance->suggestFeatures($assembly_id,$queryString);
 	} else {
 		send_error("Domain $domain_id not found",404);
 	}
@@ -968,7 +1011,9 @@ sub _getQueryByAnalysesCommon($$$) {
 		# Cleaning up the input
 		my $p_deserialized_ids = _inputDeserialize($content);
 		
-		my($idColumnName,$p_compound_analysis_ids) = $domainInstance->$dataMethodName($p_deserialized_ids,$p_experimentFilterMethod);
+		my $assembly_id = params->{'assembly_id'};
+		
+		my($idColumnName,$p_compound_analysis_ids) = $domainInstance->$dataMethodName($assembly_id,$p_deserialized_ids,$p_experimentFilterMethod);
 		
 		if(scalar(@{$p_compound_analysis_ids}) > 0) {
 			delayed {
@@ -1042,94 +1087,104 @@ prefix '/:domain_id' => sub {
 		post '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
 		options '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&preflight;
 	};
-	prefix '/sdata' => sub {
-		get ''	=>	\&getSampleTrackingDataIds;
-		get '/_all'	=>	\&getSampleTrackingData;
-		get '/donor'	=>	\&getDonors;
-		get '/donor/:donor_id'	=>	\&getDonor;
-		get '/specimen'	=>	\&getSpecimens;
-		get '/specimen/:specimen_id'	=>	\&getSpecimen;
-		get '/sample'	=>	\&getSamples;
-		get '/sample/:sample_id'	=>	\&getSample;
-		get '/experiment'	=>	\&getExperiments;
-		get '/experiment/:experiment_id'	=>	\&getExperiment;
+	prefix '/assemblies' => {
+		get ''	=>	\&getAssemblies;
+		get '/:assembly_id'	=>	\&getAssembly;
 	};
-	prefix '/analysis/metadata' => sub {
-		get ''	=>	\&getAnalysisMetadatas;
-		get '/:analysis_id'	=>	\&getAnalysisMetadata;
-	};
-	prefix '/analysis/data' => sub {
-		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getDataFromCoords;
-		# As Dancer2 fails on this, we have to setup a full route for it
-		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
-		get '/:chromosome/:chromosome_start/:chromosome_end/stats'	=>	\&getDataStatsFromCoords;
-		# As Dancer2 fails on this, we have to setup a full route for it
-		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
-		get '/:chromosome/:chromosome_start/:chromosome_end/count'	=>	\&getDataCountFromCoords;
-		# As Dancer2 fails on this, we have to setup a full route for it
-		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
-		get '/:chromosome/:chromosome_start/:chromosome_end/stream'	=>	\&getDataStreamFromCoords;
-		# As Dancer2 fails on this, we have to setup a full route for it
-		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataStreamFromCoordsAlt;
+	prefix '/genome' => {
 		post '/fetchStream'	=>	\&fetchDataStream;
 		options '/fetchStream'	=>	\&preflight;
+		'/:assembly_id' => {
+			prefix '/sdata' => sub {
+				get ''	=>	\&getSampleTrackingDataIds;
+				get '/_all'	=>	\&getSampleTrackingData;
+				get '/donor'	=>	\&getDonors;
+				get '/donor/:donor_id'	=>	\&getDonor;
+				get '/specimen'	=>	\&getSpecimens;
+				get '/specimen/:specimen_id'	=>	\&getSpecimen;
+				get '/sample'	=>	\&getSamples;
+				get '/sample/:sample_id'	=>	\&getSample;
+				get '/experiment'	=>	\&getExperiments;
+				get '/experiment/:experiment_id'	=>	\&getExperiment;
+			};
+			prefix '/analysis/metadata' => sub {
+				get ''	=>	\&getAnalysisMetadatas;
+				get '/:analysis_id'	=>	\&getAnalysisMetadata;
+			};
+			prefix '/analysis/data' => sub {
+				get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getDataFromCoords;
+				# As Dancer2 fails on this, we have to setup a full route for it
+				# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
+				get '/:chromosome/:chromosome_start/:chromosome_end/stats'	=>	\&getDataStatsFromCoords;
+				# As Dancer2 fails on this, we have to setup a full route for it
+				# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
+				get '/:chromosome/:chromosome_start/:chromosome_end/count'	=>	\&getDataCountFromCoords;
+				# As Dancer2 fails on this, we have to setup a full route for it
+				# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
+				get '/:chromosome/:chromosome_start/:chromosome_end/stream'	=>	\&getDataStreamFromCoords;
+				# As Dancer2 fails on this, we have to setup a full route for it
+				# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataStreamFromCoordsAlt;
+				post '/fetchStream'	=>	\&fetchDataStream;
+				options '/fetchStream'	=>	\&preflight;
+			};
+			prefix '/analysis/query/gene_expression' => sub {
+				prefix '/byDonors' => sub {
+					post ''	=>	\&getGeneExpressionByDonorsTab;
+					options ''	=>	\&preflight;
+					get '/:donor_id'	=>	\&getGeneExpressionByDonorsTab;
+				};
+				prefix '/bySamples' => sub {
+					post ''	=>	\&getGeneExpressionBySamplesTab;
+					options ''	=>	\&preflight;
+					get '/:sample_id'	=>	\&getGeneExpressionBySamplesTab;
+				};
+				prefix '/byExperiments' => sub {
+					post ''	=>	\&getGeneExpressionByExperimentsTab;
+					options ''	=>	\&preflight;
+					get '/:experiment_id'	=>	\&getGeneExpressionByExperimentsTab;
+				};
+				prefix '/byAnalyses' => sub {
+					post ''	=>	\&getGeneExpressionByAnalysesTab;
+					options ''	=>	\&preflight;
+					get '/:analysis_id'	=>	\&getGeneExpressionByAnalysesTab;
+				};
+			};
+			prefix '/analysis/query/regulatory_regions' => sub {
+				prefix '/byDonors' => sub {
+					post ''	=>	\&getRegulatoryRegionsByDonorsTab;
+					options ''	=>	\&preflight;
+					get '/:donor_id'	=>	\&getRegulatoryRegionsByDonorsTab;
+				};
+				prefix '/bySamples' => sub {
+					post ''	=>	\&getRegulatoryRegionsBySamplesTab;
+					options ''	=>	\&preflight;
+					get '/:sample_id'	=>	\&getRegulatoryRegionsBySamplesTab;
+				};
+				prefix '/byExperiments' => sub {
+					post ''	=>	\&getRegulatoryRegionsByExperimentsTab;
+					options ''	=>	\&preflight;
+					get '/:experiment_id'	=>	\&getRegulatoryRegionsByExperimentsTab;
+				};
+				prefix '/byAnalyses' => sub {
+					post ''	=>	\&getRegulatoryRegionsByAnalysesTab;
+					options ''	=>	\&preflight;
+					get '/:analysis_id'	=>	\&getRegulatoryRegionsByAnalysesTab;
+				};
+			};
+			prefix '/genomic_layout' => sub {
+				get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getGenomicLayoutFromCoords;
+				# As Dancer2 fails on this, we have to setup a full route for it
+				# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
+			};
+			get '/features' => \&queryFeatures;
+			get '/features/suggest' => \&suggestFeatures;
+		};
 	};
-	prefix '/analysis/query/gene_expression' => sub {
-		prefix '/byDonors' => sub {
-			post ''	=>	\&getGeneExpressionByDonorsTab;
-			options ''	=>	\&preflight;
-			get '/:donor_id'	=>	\&getGeneExpressionByDonorsTab;
-		};
-		prefix '/bySamples' => sub {
-			post ''	=>	\&getGeneExpressionBySamplesTab;
-			options ''	=>	\&preflight;
-			get '/:sample_id'	=>	\&getGeneExpressionBySamplesTab;
-		};
-		prefix '/byExperiments' => sub {
-			post ''	=>	\&getGeneExpressionByExperimentsTab;
-			options ''	=>	\&preflight;
-			get '/:experiment_id'	=>	\&getGeneExpressionByExperimentsTab;
-		};
-		prefix '/byAnalyses' => sub {
-			post ''	=>	\&getGeneExpressionByAnalysesTab;
-			options ''	=>	\&preflight;
-			get '/:analysis_id'	=>	\&getGeneExpressionByAnalysesTab;
-		};
-	};
-	prefix '/analysis/query/regulatory_regions' => sub {
-		prefix '/byDonors' => sub {
-			post ''	=>	\&getRegulatoryRegionsByDonorsTab;
-			options ''	=>	\&preflight;
-			get '/:donor_id'	=>	\&getRegulatoryRegionsByDonorsTab;
-		};
-		prefix '/bySamples' => sub {
-			post ''	=>	\&getRegulatoryRegionsBySamplesTab;
-			options ''	=>	\&preflight;
-			get '/:sample_id'	=>	\&getRegulatoryRegionsBySamplesTab;
-		};
-		prefix '/byExperiments' => sub {
-			post ''	=>	\&getRegulatoryRegionsByExperimentsTab;
-			options ''	=>	\&preflight;
-			get '/:experiment_id'	=>	\&getRegulatoryRegionsByExperimentsTab;
-		};
-		prefix '/byAnalyses' => sub {
-			post ''	=>	\&getRegulatoryRegionsByAnalysesTab;
-			options ''	=>	\&preflight;
-			get '/:analysis_id'	=>	\&getRegulatoryRegionsByAnalysesTab;
-		};
-	};
-	prefix '/genomic_layout' => sub {
-		get '/:chromosome/:chromosome_start/:chromosome_end'	=>	\&getGenomicLayoutFromCoords;
-		# As Dancer2 fails on this, we have to setup a full route for it
-		# get qr{/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
-	};
-	get '/features' => \&queryFeatures;
-	get '/features/suggest' => \&suggestFeatures;
 };
-get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
-get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
-get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stream}	=>	\&getDataStreamFromCoordsAlt;
-get qr{/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
-get qr{/([^/]+)/genomic_layout/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
+get qr{/([^/]+)/genome/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/count}	=>	\&getDataCountFromCoordsAlt;
+get qr{/([^/]+)/genome/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stats}	=>	\&getDataStatsFromCoordsAlt;
+get qr{/([^/]+)/genome/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)/stream}	=>	\&getDataStreamFromCoordsAlt;
+get qr{/([^/]+)/genome/([^/]+)/analysis/data/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getDataFromCoordsAlt;
+get qr{/([^/]+)/genome/([^/]+)/genomic_layout/([^:]+):([1-9][0-9]*)-([1-9][0-9]*)}	=>	\&getGenomicLayoutFromCoordsAlt;
 
 1;
