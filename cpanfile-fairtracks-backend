@@ -1,0 +1,3 @@
+# EPICO FAIRTracks API backend
+
+requires 'EPICO::REST::Backend::FAIRTracks', 'v0.0.1', url => 'https://github.com/inab/EPICO-FAIRTracks-backend/archive/v0.0.1.tar.gz';
