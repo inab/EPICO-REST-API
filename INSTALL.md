@@ -29,8 +29,8 @@ The detailed dependencies are in [cpanfile](cpanfile), which are used by carton.
 5. Install one or more backends, defined in cpanfile-like files:
 
 	```bash
-	carton install --cpanfile cpanfile-es-backend
-	carton install --cpanfile cpanfile-fairtracks-backend
+	carton install --cpanfile cpanfile-es-backend  --deployment --without develop
+	carton install --cpanfile cpanfile-fairtracks-backend  --deployment --without develop
 	```
 
 6. Put the profile configurations in `config` subdirectory. Each one of these files must contain what the backend needs, as well as `epico-api` section:
