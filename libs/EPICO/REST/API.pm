@@ -1087,14 +1087,14 @@ prefix '/:domain_id' => sub {
 		post '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&getCVtermsFromColumn;
 		options '/:conceptDomainName/:conceptName/:columnName/terms'	=>	\&preflight;
 	};
-	prefix '/assemblies' => {
+	prefix '/assemblies' => sub {
 		get ''	=>	\&getAssemblies;
 		get '/:assembly_id'	=>	\&getAssembly;
 	};
-	prefix '/genome' => {
+	prefix '/genome' => sub {
 		post '/fetchStream'	=>	\&fetchDataStream;
 		options '/fetchStream'	=>	\&preflight;
-		'/:assembly_id' => {
+		'/:assembly_id' => sub {
 			prefix '/sdata' => sub {
 				get ''	=>	\&getSampleTrackingDataIds;
 				get '/_all'	=>	\&getSampleTrackingData;
