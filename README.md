@@ -1,12 +1,10 @@
-EPICO / BLUEPRINT Data Analysis Portal REST API
-=======================================
+# EPICO / BLUEPRINT Data Analysis Portal REST API
 
-This API is needed by EPICO / BLUEPRINT Data Analysis Portal version 1.0 and later.
+This API is needed by EPICO / BLUEPRINT Data Analysis Portal version 2.0 and later.
 
 Installation procedures (dependencies, Apache setup, etc...) are available at [INSTALL.md](INSTALL.md).
 
-Endpoints
---------
+## Endpoints
 
 * GET /	It returns the ids of available domains, along with a brief description
 

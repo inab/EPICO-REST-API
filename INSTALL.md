@@ -4,11 +4,18 @@ This document explains how to install and setup EPICO / BLUEPRINT Data Analysis 
 
 ## Dependencies
 
-This software is written in Perl, and it depends on Dancer2, Plack, FCGI and Elasticsearch.
-The detailed dependencies are in [cpanfile](cpanfile), which are used by carton.
+This software is written in Perl, and it depends on the modules detailed at
+[cpanfile](cpanfile), which is used by `cpm` in the deployment procedure.
 
 ## Deployment
-1. Check you have installed gcc, cpan, the development version of Perl.
+
+1. Check you have installed `gcc`, `cpan`, module `local::lib` and the development version of Perl.
+
+	```bash
+	type -a gcc
+	type -a cpan
+	perl -c -Mlocal::lib
+	```
 
 2. Create a separate user (for instance, `epico-rest` with group `epico-rest`) for the API, with a separate group
 
@@ -16,24 +23,34 @@ The detailed dependencies are in [cpanfile](cpanfile), which are used by carton.
 	useradd -m -U -c 'EPICO REST API unprivileged user' epico-rest
 	```
 
-3. As the user `epico-rest`, install the needed Perl modules and dependencies
-
-4. Clone this code, in order to install the API and its dependencies:
+3. Clone this code, in order to install the API and its dependencies:
 
 	```bash
 	git clone -b fairtracks https://github.com/inab/EPICO-REST-API.git
 	cd EPICO-REST-API
+	
+	# This command helps setting up a clean, healthy installation environment
+	eval $(perl -Mlocal::lib="$PWD/.plenv")
+	# Next command install both cpm and Carton (in case you do not have them already)
+	cpan App::cpm
+	# This one installs the dependencies used by several programs
+	cpm install --resolver 02packages,https://gitlab.bsc.es/inb/darkpan/raw/master/ --resolver metadb
 	carton install --deployment --without develop
 	```
 
-5. Install one or more backends, defined in cpanfile-like files:
+4. Install one or more backends, defined in cpanfile-like files:
 
 	```bash
+	# Original backend
+	cpm install --resolver 02packages,https://gitlab.bsc.es/inb/darkpan/raw/master/ --resolver metadb --cpanfile cpanfile-es-backend
 	carton install --cpanfile cpanfile-es-backend  --deployment --without develop
+	
+	# FAIRTracks backend
+	cpm install --resolver 02packages,https://gitlab.bsc.es/inb/darkpan/raw/master/ --resolver metadb --cpanfile cpanfile-fairtracks-backend
 	carton install --cpanfile cpanfile-fairtracks-backend  --deployment --without develop
 	```
 
-6. Put the profile configurations in `config` subdirectory. Each one of these files must contain what the backend needs, as well as `epico-api` section:
+5. Put the profile configurations in `config` subdirectory, with the `.ini` extension. Each one of these files must contain what the backend needs, as well as `epico-api` section:
 
 	```
 	[epico-api]
@@ -47,11 +64,20 @@ The detailed dependencies are in [cpanfile](cpanfile), which are used by carton.
 	In the case of the [native backend](https://github.com/inab/EPICO-ES-backend), the configuration file must contain the database connection parameters, database backend, etc... as defined for [EPICO data loading scripts](https://github.com/inab/EPICO-data-loading-scripts/tree/fairtracks).
 	
 
+6. As original backend depends on a local copy of the data model, check out the data model itself in the `config` subdirectory when the original module is going to be used:
+
+	```bash
+	cd config && git clone --depth 1 -b 20191117 https://github.com/inab/EPICO-data-model.git model
+	cd model && cpm install --resolver 02packages,https://gitlab.bsc.es/inb/darkpan/raw/master/ --resolver metadb
+	cd ../..
+	```
+
 7. Create an installation directory (for instance, `/home/epico-rest/EPICO-REST-API`), and copy at least next content there:
 
 	```bash
 	mkdir -p "${HOME}"/EPICO-REST-API
-	cp -dpr epico-rest.cgi epico-rest.fcgi epico-rest.psgi config libs local "${HOME}"/EPICO-REST-API
+	cp -Lp epico-rest.cgi epico-rest.fcgi "${HOME}"/EPICO-REST-API
+	cp -dpr epico-rest.psgi epico-rest.*.pl config cpanfile* .plenv libs local "${HOME}"/EPICO-REST-API
 	```
 
 ## Apache Web server setup with a virtual host (in CentOS and Ubuntu)

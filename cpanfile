@@ -16,6 +16,5 @@ requires 'Moo';
 requires 'JSON::MaybeXS';
 requires 'Scalar::Util';
 
-# Dependencies by EPICO API
-
-requires 'EPICO::REST::Backend', 'v2.0.0', url => 'https://github.com/inab/EPICO-abstract-backend/archive/v2.0.0.tar.gz';
+# Dependencies by EPICO API, which live in BSC INB DarkPAN
+requires 'EPICO::REST::Backend', 'v2.0.1';

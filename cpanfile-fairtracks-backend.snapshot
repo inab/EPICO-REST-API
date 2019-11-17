@@ -1433,6 +1433,20 @@ DISTRIBUTIONS
       File::Spec 0
       Log::Log4perl 0
       boolean 0
+  EPICO-FAIRTracks-backend-v0.0.2
+    pathname: J/JM/JMFG/EPICO-FAIRTracks-backend-v0.0.2.tar.gz
+    provides:
+      EPICO::FAIRTracks::backend undef
+      EPICO::REST::Backend::FAIRTracks 0.000002
+    requirements:
+      Carp 0
+      EPICO::REST::Backend v2.0.0
+      ExtUtils::MakeMaker 0
+      File::Basename 0
+      File::ShareDir::Install 0.06
+      File::Spec 0
+      Log::Log4perl 0
+      boolean 0
   EPICO-abstract-backend-v2.0.2
     pathname: J/JM/JMFG/EPICO-abstract-backend-v2.0.2.tar.gz
     provides:

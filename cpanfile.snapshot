@@ -7,10 +7,10 @@ DISTRIBUTIONS
       Algorithm::Diff::_impl 1.1903
     requirements:
       ExtUtils::MakeMaker 0
-  Apache-LogFormat-Compiler-0.35
-    pathname: K/KA/KAZEBURO/Apache-LogFormat-Compiler-0.35.tar.gz
+  Apache-LogFormat-Compiler-0.36
+    pathname: K/KA/KAZEBURO/Apache-LogFormat-Compiler-0.36.tar.gz
     provides:
-      Apache::LogFormat::Compiler 0.35
+      Apache::LogFormat::Compiler 0.36
     requirements:
       Module::Build::Tiny 0.035
       POSIX 0
@@ -193,14 +193,22 @@ DISTRIBUTIONS
       Module::Build::Tiny 0.035
       URI::Escape 0
       perl 5.008001
-  Cpanel-JSON-XS-4.12
-    pathname: R/RU/RURBAN/Cpanel-JSON-XS-4.12.tar.gz
+  Cpanel-JSON-XS-4.17
+    pathname: R/RU/RURBAN/Cpanel-JSON-XS-4.17.tar.gz
     provides:
-      Cpanel::JSON::XS 4.12
+      Cpanel::JSON::XS 4.17
       Cpanel::JSON::XS::Type undef
     requirements:
+      Carp 0
+      Config 0
+      Encode 1.9801
+      Exporter 0
       ExtUtils::MakeMaker 0
       Pod::Text 2.08
+      XSLoader 0
+      overload 0
+      strict 0
+      warnings 0
   Dancer2-0.208001
     pathname: C/CR/CROMEDOME/Dancer2-0.208001.tar.gz
     provides:
@@ -337,14 +345,6 @@ DISTRIBUTIONS
       Sub::Install 0.921
       strict 0
       warnings 0
-  Devel-GlobalDestruction-0.14
-    pathname: H/HA/HAARG/Devel-GlobalDestruction-0.14.tar.gz
-    provides:
-      Devel::GlobalDestruction 0.14
-    requirements:
-      ExtUtils::MakeMaker 0
-      Sub::Exporter::Progressive 0.001011
-      perl 5.006
   Devel-StackTrace-2.04
     pathname: D/DR/DROLSKY/Devel-StackTrace-2.04.tar.gz
     provides:
@@ -377,6 +377,18 @@ DISTRIBUTIONS
       base 0
       strict 0
       warnings 0
+  EPICO-abstract-backend-v2.0.2
+    pathname: J/JM/JMFG/EPICO-abstract-backend-v2.0.2.tar.gz
+    provides:
+      EPICO::REST::Backend 2.000002
+      EPICO::abstract::backend undef
+    requirements:
+      Carp 0
+      Config::IniFiles 0
+      ExtUtils::MakeMaker 0
+      Log::Log4perl 0
+      Scalar::Util 0
+      boolean 0
   Encode-Locale-1.05
     pathname: G/GA/GAAS/Encode-Locale-1.05.tar.gz
     provides:
@@ -536,18 +548,21 @@ DISTRIBUTIONS
       HTML::Tagset 3.20
     requirements:
       ExtUtils::MakeMaker 0
-  HTTP-Date-6.02
-    pathname: G/GA/GAAS/HTTP-Date-6.02.tar.gz
+  HTTP-Date-6.04
+    pathname: O/OA/OALDERS/HTTP-Date-6.04.tar.gz
     provides:
-      HTTP::Date 6.02
+      HTTP::Date 6.04
     requirements:
+      Exporter 0
       ExtUtils::MakeMaker 0
       Time::Local 0
+      Time::Zone 0
       perl 5.006002
-  HTTP-Entity-Parser-0.21
-    pathname: K/KA/KAZEBURO/HTTP-Entity-Parser-0.21.tar.gz
+      strict 0
+  HTTP-Entity-Parser-0.22
+    pathname: K/KA/KAZEBURO/HTTP-Entity-Parser-0.22.tar.gz
     provides:
-      HTTP::Entity::Parser 0.21
+      HTTP::Entity::Parser 0.22
       HTTP::Entity::Parser::JSON undef
       HTTP::Entity::Parser::MultiPart undef
       HTTP::Entity::Parser::OctetStream undef
@@ -889,35 +904,34 @@ DISTRIBUTIONS
       perl 5.006
       strict 0
       warnings 0
-  Moo-2.003004
-    pathname: H/HA/HAARG/Moo-2.003004.tar.gz
+  Moo-2.003006
+    pathname: H/HA/HAARG/Moo-2.003006.tar.gz
     provides:
       Method::Generate::Accessor undef
       Method::Generate::BuildAll undef
       Method::Generate::Constructor undef
       Method::Generate::DemolishAll undef
-      Moo 2.003004
+      Moo 2.003006
       Moo::HandleMoose undef
       Moo::HandleMoose::FakeConstructor undef
       Moo::HandleMoose::FakeMetaClass undef
       Moo::HandleMoose::_TypeMap undef
       Moo::Object undef
-      Moo::Role 2.003004
+      Moo::Role 2.003006
       Moo::_Utils undef
       Moo::_mro undef
       Moo::_strictures undef
       Moo::sification undef
       oo undef
     requirements:
-      Class::Method::Modifiers 1.1
-      Devel::GlobalDestruction 0.11
+      Class::Method::Modifiers 1.10
       Exporter 5.57
       ExtUtils::MakeMaker 0
       Module::Runtime 0.014
-      Role::Tiny 2.000004
-      Scalar::Util 0
-      Sub::Defer 2.003001
-      Sub::Quote 2.003001
+      Role::Tiny 2.001004
+      Scalar::Util 1.09
+      Sub::Defer 2.006006
+      Sub::Quote 2.006006
       perl 5.006
   POSIX-strftime-Compiler-0.42
     pathname: K/KA/KAZEBURO/POSIX-strftime-Compiler-0.42.tar.gz
@@ -1172,11 +1186,11 @@ DISTRIBUTIONS
       perl 5.008000
       strict 0
       warnings 0
-  Role-Tiny-2.000008
-    pathname: H/HA/HAARG/Role-Tiny-2.000008.tar.gz
+  Role-Tiny-2.001004
+    pathname: H/HA/HAARG/Role-Tiny-2.001004.tar.gz
     provides:
-      Role::Tiny 2.000008
-      Role::Tiny::With 2.000008
+      Role::Tiny 2.001004
+      Role::Tiny::With 2.001004
     requirements:
       Exporter 5.57
       perl 5.006
@@ -1222,12 +1236,6 @@ DISTRIBUTIONS
       Sub::Install 0.92
       strict 0
       warnings 0
-  Sub-Exporter-Progressive-0.001013
-    pathname: F/FR/FREW/Sub-Exporter-Progressive-0.001013.tar.gz
-    provides:
-      Sub::Exporter::Progressive 0.001013
-    requirements:
-      ExtUtils::MakeMaker 0
   Sub-Install-0.928
     pathname: R/RJ/RJBS/Sub-Install-0.928.tar.gz
     provides:
@@ -1239,11 +1247,11 @@ DISTRIBUTIONS
       Scalar::Util 0
       strict 0
       warnings 0
-  Sub-Quote-2.006003
-    pathname: H/HA/HAARG/Sub-Quote-2.006003.tar.gz
+  Sub-Quote-2.006006
+    pathname: H/HA/HAARG/Sub-Quote-2.006006.tar.gz
     provides:
-      Sub::Defer 2.006003
-      Sub::Quote 2.006003
+      Sub::Defer 2.006006
+      Sub::Quote 2.006006
     requirements:
       ExtUtils::MakeMaker 0
       Scalar::Util 0
@@ -1461,11 +1469,11 @@ DISTRIBUTIONS
       Test::Builder::Module 0
       Test::More 0.88
       perl 5.008_001
-  Test-TCP-2.20
-    pathname: M/MI/MIYAGAWA/Test-TCP-2.20.tar.gz
+  Test-TCP-2.22
+    pathname: M/MI/MIYAGAWA/Test-TCP-2.22.tar.gz
     provides:
       Net::EmptyPort undef
-      Test::TCP 2.20
+      Test::TCP 2.22
       Test::TCP::CheckPort undef
     requirements:
       ExtUtils::MakeMaker 6.64
@@ -1498,6 +1506,49 @@ DISTRIBUTIONS
       Exporter 0
       ExtUtils::MakeMaker 0
       perl 5.006
+  TimeDate-2.30
+    pathname: G/GB/GBARR/TimeDate-2.30.tar.gz
+    provides:
+      Date::Format 2.24
+      Date::Format::Generic 2.24
+      Date::Language 1.10
+      Date::Language::Afar 0.99
+      Date::Language::Amharic 1.00
+      Date::Language::Austrian 1.01
+      Date::Language::Brazilian 1.01
+      Date::Language::Bulgarian 1.01
+      Date::Language::Chinese 1.00
+      Date::Language::Chinese_GB 1.01
+      Date::Language::Czech 1.01
+      Date::Language::Danish 1.01
+      Date::Language::Dutch 1.02
+      Date::Language::English 1.01
+      Date::Language::Finnish 1.01
+      Date::Language::French 1.04
+      Date::Language::Gedeo 0.99
+      Date::Language::German 1.02
+      Date::Language::Greek 1.00
+      Date::Language::Hungarian 1.01
+      Date::Language::Icelandic 1.01
+      Date::Language::Italian 1.01
+      Date::Language::Norwegian 1.01
+      Date::Language::Oromo 0.99
+      Date::Language::Romanian 1.01
+      Date::Language::Russian 1.01
+      Date::Language::Russian_cp1251 1.01
+      Date::Language::Russian_koi8r 1.01
+      Date::Language::Sidama 0.99
+      Date::Language::Somali 0.99
+      Date::Language::Spanish 1.00
+      Date::Language::Swedish 1.01
+      Date::Language::Tigrinya 1.00
+      Date::Language::TigrinyaEritrean 1.00
+      Date::Language::TigrinyaEthiopian 1.00
+      Date::Language::Turkish 1.0
+      Date::Parse 2.30
+      Time::Zone 2.24
+    requirements:
+      ExtUtils::MakeMaker 0
   Try-Tiny-0.30
     pathname: E/ET/ETHER/Try-Tiny-0.30.tar.gz
     provides:
@@ -1510,48 +1561,48 @@ DISTRIBUTIONS
       perl 5.006
       strict 0
       warnings 0
-  Type-Tiny-1.004004
-    pathname: T/TO/TOBYINK/Type-Tiny-1.004004.tar.gz
+  Type-Tiny-1.006000
+    pathname: T/TO/TOBYINK/Type-Tiny-1.006000.tar.gz
     provides:
-      Devel::TypeTiny::Perl56Compat 1.004004
-      Devel::TypeTiny::Perl58Compat 1.004004
-      Error::TypeTiny 1.004004
-      Error::TypeTiny::Assertion 1.004004
-      Error::TypeTiny::Compilation 1.004004
-      Error::TypeTiny::WrongNumberOfParameters 1.004004
-      Eval::TypeTiny 1.004004
-      Reply::Plugin::TypeTiny 1.004004
-      Test::TypeTiny 1.004004
-      Type::Coercion 1.004004
-      Type::Coercion::FromMoose 1.004004
-      Type::Coercion::Union 1.004004
-      Type::Library 1.004004
-      Type::Params 1.004004
-      Type::Parser 1.004004
-      Type::Registry 1.004004
-      Type::Tiny 1.004004
-      Type::Tiny::Class 1.004004
-      Type::Tiny::Duck 1.004004
-      Type::Tiny::Enum 1.004004
-      Type::Tiny::Intersection 1.004004
-      Type::Tiny::Role 1.004004
-      Type::Tiny::Union 1.004004
-      Type::Utils 1.004004
-      Types::Common::Numeric 1.004004
-      Types::Common::String 1.004004
-      Types::Standard 1.004004
-      Types::Standard::ArrayRef 1.004004
-      Types::Standard::CycleTuple 1.004004
-      Types::Standard::Dict 1.004004
-      Types::Standard::HashRef 1.004004
-      Types::Standard::Map 1.004004
-      Types::Standard::ScalarRef 1.004004
-      Types::Standard::StrMatch 1.004004
-      Types::Standard::Tied 1.004004
-      Types::Standard::Tuple 1.004004
-      Types::TypeTiny 1.004004
+      Devel::TypeTiny::Perl56Compat 1.006000
+      Devel::TypeTiny::Perl58Compat 1.006000
+      Error::TypeTiny 1.006000
+      Error::TypeTiny::Assertion 1.006000
+      Error::TypeTiny::Compilation 1.006000
+      Error::TypeTiny::WrongNumberOfParameters 1.006000
+      Eval::TypeTiny 1.006000
+      Reply::Plugin::TypeTiny 1.006000
+      Test::TypeTiny 1.006000
+      Type::Coercion 1.006000
+      Type::Coercion::FromMoose 1.006000
+      Type::Coercion::Union 1.006000
+      Type::Library 1.006000
+      Type::Params 1.006000
+      Type::Parser 1.006000
+      Type::Registry 1.006000
+      Type::Tiny 1.006000
+      Type::Tiny::Class 1.006000
+      Type::Tiny::Duck 1.006000
+      Type::Tiny::Enum 1.006000
+      Type::Tiny::Intersection 1.006000
+      Type::Tiny::Role 1.006000
+      Type::Tiny::Union 1.006000
+      Type::Utils 1.006000
+      Types::Common::Numeric 1.006000
+      Types::Common::String 1.006000
+      Types::Standard 1.006000
+      Types::Standard::ArrayRef 1.006000
+      Types::Standard::CycleTuple 1.006000
+      Types::Standard::Dict 1.006000
+      Types::Standard::HashRef 1.006000
+      Types::Standard::Map 1.006000
+      Types::Standard::ScalarRef 1.006000
+      Types::Standard::StrMatch 1.006000
+      Types::Standard::Tied 1.006000
+      Types::Standard::Tuple 1.006000
+      Types::TypeTiny 1.006000
     requirements:
-      Exporter::Tiny 0.040
+      Exporter::Tiny 1.000000
       ExtUtils::MakeMaker 6.17
       perl 5.006001
   URI-1.76
