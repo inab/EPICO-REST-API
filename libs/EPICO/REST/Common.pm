@@ -54,7 +54,8 @@ use constant {
 								
 								# It removes the file suffix, keeping the name as the key
 								my $key = substr($entry,0,-4);
-								$backendMap{$key} = chomp($module_name);
+								chomp($module_name);
+								$backendMap{$key} = $module_name;
 							}
 						}
 					}
