@@ -11,6 +11,16 @@ use FindBin;
 use lib File::Spec->catfile($FindBin::Bin,"libs");
 
 use EPICO::REST::API;
+
+# Useful on development cycles
+unless(caller) {
+	require Plack::Runner;
+	my $runner = Plack::Runner->new;
+	$runner->parse_options(@ARGV);
+	$runner->run(EPICO::REST::API->to_app);
+	exit 0;
+}
+
 use Plack::Builder;
 builder {
 # Enabling this we get some issues, so disabled for now

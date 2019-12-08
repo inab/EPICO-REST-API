@@ -41,4 +41,6 @@ die "Unable to find EPICO REST API script: $psgi" unless(-r $psgi);
 
 # This is for plain CGIs
 use Plack::Runner;
-Plack::Runner->run($psgi);
+my $runner = Plack::Runner->new();
+$runner->parse_options(@ARGV);
+$runner->run($psgi);
