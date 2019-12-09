@@ -353,10 +353,10 @@ DISTRIBUTIONS
       XML::LibXML 0
       boolean 0.32
       perl 5.012
-  BSON-XS-v0.8.1
-    pathname: M/MO/MONGODB/BSON-XS-v0.8.1.tar.gz
+  BSON-XS-v0.8.2
+    pathname: M/MO/MONGODB/BSON-XS-v0.8.2.tar.gz
     provides:
-      BSON::XS v0.8.1
+      BSON::XS v0.8.2
     requirements:
       BSON 1.012000
       Config::AutoConf 0.22
@@ -1433,6 +1433,25 @@ DISTRIBUTIONS
       File::Spec 0
       Log::Log4perl 0
       boolean 0
+  EPICO-FAIRTracks-backend-v0.0.3
+    pathname: J/JM/JMFG/EPICO-FAIRTracks-backend-v0.0.3.tar.gz
+    provides:
+      EPICO::FAIRTracks::backend undef
+      EPICO::REST::Backend::FAIRTracks 0.000003
+    requirements:
+      Carp 0
+      EPICO::REST::Backend v2.0.0
+      ExtUtils::MakeMaker 0
+      File::Basename 0
+      File::ShareDir::Install 0.06
+      File::Spec 0
+      JSON::MaybeXS 0
+      LWP::Protocol::https 0
+      LWP::UserAgent 0
+      Log::Log4perl 0
+      Scalar::Util 0
+      URI 0
+      boolean 0
   EPICO-abstract-backend-v2.0.2
     pathname: J/JM/JMFG/EPICO-abstract-backend-v2.0.2.tar.gz
     provides:
@@ -1660,12 +1679,12 @@ DISTRIBUTIONS
       HTML::Tagset 3.20
     requirements:
       ExtUtils::MakeMaker 0
-  HTTP-Cookies-6.07
-    pathname: O/OA/OALDERS/HTTP-Cookies-6.07.tar.gz
+  HTTP-Cookies-6.08
+    pathname: O/OA/OALDERS/HTTP-Cookies-6.08.tar.gz
     provides:
-      HTTP::Cookies 6.07
-      HTTP::Cookies::Microsoft 6.07
-      HTTP::Cookies::Netscape 6.07
+      HTTP::Cookies 6.08
+      HTTP::Cookies::Microsoft 6.08
+      HTTP::Cookies::Netscape 6.08
     requirements:
       Carp 0
       ExtUtils::MakeMaker 0
@@ -1694,14 +1713,14 @@ DISTRIBUTIONS
       perl 5.006
       strict 0
       warnings 0
-  HTTP-Date-6.04
-    pathname: O/OA/OALDERS/HTTP-Date-6.04.tar.gz
+  HTTP-Date-6.05
+    pathname: O/OA/OALDERS/HTTP-Date-6.05.tar.gz
     provides:
-      HTTP::Date 6.04
+      HTTP::Date 6.05
     requirements:
       Exporter 0
       ExtUtils::MakeMaker 0
-      Time::Local 0
+      Time::Local 1.28
       Time::Zone 0
       perl 5.006002
       strict 0
@@ -2841,49 +2860,49 @@ DISTRIBUTIONS
       overload 0
       strict 0
       warnings 0
-  Specio-0.44
-    pathname: D/DR/DROLSKY/Specio-0.44.tar.gz
+  Specio-0.45
+    pathname: D/DR/DROLSKY/Specio-0.45.tar.gz
     provides:
-      Specio 0.44
-      Specio::Coercion 0.44
-      Specio::Constraint::AnyCan 0.44
-      Specio::Constraint::AnyDoes 0.44
-      Specio::Constraint::AnyIsa 0.44
-      Specio::Constraint::Enum 0.44
-      Specio::Constraint::Intersection 0.44
-      Specio::Constraint::ObjectCan 0.44
-      Specio::Constraint::ObjectDoes 0.44
-      Specio::Constraint::ObjectIsa 0.44
-      Specio::Constraint::Parameterizable 0.44
-      Specio::Constraint::Parameterized 0.44
-      Specio::Constraint::Role::CanType 0.44
-      Specio::Constraint::Role::DoesType 0.44
-      Specio::Constraint::Role::Interface 0.44
-      Specio::Constraint::Role::IsaType 0.44
-      Specio::Constraint::Simple 0.44
-      Specio::Constraint::Structurable 0.44
-      Specio::Constraint::Structured 0.44
-      Specio::Constraint::Union 0.44
-      Specio::Declare 0.44
-      Specio::DeclaredAt 0.44
-      Specio::Exception 0.44
-      Specio::Exporter 0.44
-      Specio::Helpers 0.44
-      Specio::Library::Builtins 0.44
-      Specio::Library::Numeric 0.44
-      Specio::Library::Perl 0.44
-      Specio::Library::String 0.44
-      Specio::Library::Structured 0.44
-      Specio::Library::Structured::Dict 0.44
-      Specio::Library::Structured::Map 0.44
-      Specio::Library::Structured::Tuple 0.44
-      Specio::OO 0.44
-      Specio::PartialDump 0.44
-      Specio::Registry 0.44
-      Specio::Role::Inlinable 0.44
-      Specio::Subs 0.44
-      Specio::TypeChecks 0.44
-      Test::Specio 0.44
+      Specio 0.45
+      Specio::Coercion 0.45
+      Specio::Constraint::AnyCan 0.45
+      Specio::Constraint::AnyDoes 0.45
+      Specio::Constraint::AnyIsa 0.45
+      Specio::Constraint::Enum 0.45
+      Specio::Constraint::Intersection 0.45
+      Specio::Constraint::ObjectCan 0.45
+      Specio::Constraint::ObjectDoes 0.45
+      Specio::Constraint::ObjectIsa 0.45
+      Specio::Constraint::Parameterizable 0.45
+      Specio::Constraint::Parameterized 0.45
+      Specio::Constraint::Role::CanType 0.45
+      Specio::Constraint::Role::DoesType 0.45
+      Specio::Constraint::Role::Interface 0.45
+      Specio::Constraint::Role::IsaType 0.45
+      Specio::Constraint::Simple 0.45
+      Specio::Constraint::Structurable 0.45
+      Specio::Constraint::Structured 0.45
+      Specio::Constraint::Union 0.45
+      Specio::Declare 0.45
+      Specio::DeclaredAt 0.45
+      Specio::Exception 0.45
+      Specio::Exporter 0.45
+      Specio::Helpers 0.45
+      Specio::Library::Builtins 0.45
+      Specio::Library::Numeric 0.45
+      Specio::Library::Perl 0.45
+      Specio::Library::String 0.45
+      Specio::Library::Structured 0.45
+      Specio::Library::Structured::Dict 0.45
+      Specio::Library::Structured::Map 0.45
+      Specio::Library::Structured::Tuple 0.45
+      Specio::OO 0.45
+      Specio::PartialDump 0.45
+      Specio::Registry 0.45
+      Specio::Role::Inlinable 0.45
+      Specio::Subs 0.45
+      Specio::TypeChecks 0.45
+      Test::Specio 0.45
     requirements:
       B 0
       Carp 0
@@ -2903,6 +2922,7 @@ DISTRIBUTIONS
       Test::Fatal 0
       Test::More 0.96
       Try::Tiny 0
+      XString 0
       overload 0
       parent 0
       perl 5.008
@@ -3691,6 +3711,13 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 0
       perl 5.008
+  XString-0.002
+    pathname: A/AT/ATOOMIC/XString-0.002.tar.gz
+    provides:
+      XString 0.002
+    requirements:
+      ExtUtils::MakeMaker 0
+      perl 5.010
   YAML-1.29
     pathname: T/TI/TINITA/YAML-1.29.tar.gz
     provides:
@@ -3726,32 +3753,32 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 0
       perl 5.008001
-  libwww-perl-6.41
-    pathname: O/OA/OALDERS/libwww-perl-6.41.tar.gz
+  libwww-perl-6.43
+    pathname: O/OA/OALDERS/libwww-perl-6.43.tar.gz
     provides:
-      LWP 6.41
-      LWP::Authen::Basic 6.41
-      LWP::Authen::Digest 6.41
-      LWP::Authen::Ntlm 6.41
-      LWP::ConnCache 6.41
-      LWP::Debug 6.41
-      LWP::Debug::TraceHTTP 6.41
-      LWP::DebugFile 6.41
-      LWP::MemberMixin 6.41
-      LWP::Protocol 6.41
-      LWP::Protocol::cpan 6.41
-      LWP::Protocol::data 6.41
-      LWP::Protocol::file 6.41
-      LWP::Protocol::ftp 6.41
-      LWP::Protocol::gopher 6.41
-      LWP::Protocol::http 6.41
-      LWP::Protocol::loopback 6.41
-      LWP::Protocol::mailto 6.41
-      LWP::Protocol::nntp 6.41
-      LWP::Protocol::nogo 6.41
-      LWP::RobotUA 6.41
-      LWP::Simple 6.41
-      LWP::UserAgent 6.41
+      LWP 6.43
+      LWP::Authen::Basic 6.43
+      LWP::Authen::Digest 6.43
+      LWP::Authen::Ntlm 6.43
+      LWP::ConnCache 6.43
+      LWP::Debug 6.43
+      LWP::Debug::TraceHTTP 6.43
+      LWP::DebugFile 6.43
+      LWP::MemberMixin 6.43
+      LWP::Protocol 6.43
+      LWP::Protocol::cpan 6.43
+      LWP::Protocol::data 6.43
+      LWP::Protocol::file 6.43
+      LWP::Protocol::ftp 6.43
+      LWP::Protocol::gopher 6.43
+      LWP::Protocol::http 6.43
+      LWP::Protocol::loopback 6.43
+      LWP::Protocol::mailto 6.43
+      LWP::Protocol::nntp 6.43
+      LWP::Protocol::nogo 6.43
+      LWP::RobotUA 6.43
+      LWP::Simple 6.43
+      LWP::UserAgent 6.43
       libwww::perl undef
     requirements:
       CPAN::Meta::Requirements 2.120620
@@ -3771,7 +3798,7 @@ DISTRIBUTIONS
       HTTP::Request 6
       HTTP::Request::Common 6
       HTTP::Response 6
-      HTTP::Status 6
+      HTTP::Status 6.18
       IO::Select 0
       IO::Socket 0
       LWP::MediaTypes 6
