@@ -34,33 +34,33 @@ Installation procedures (dependencies, Apache setup, etc...) are available at [I
 
 * GET /{domain}/genome/{assembly_id}/sdata	It returns the identifiers of all the donors, specimens, samples and experiments registered in the database.
 
-* GET /{domain}/genome/{assembly_id}sdata/_all	It returns all the donors, specimens, samples and experiments registered in the database.
+* GET /{domain}/genome/{assembly_id}/sdata/_all	It returns all the donors, specimens, samples and experiments registered in the database.
 
-* GET /{domain}/genome/{assembly_id}sdata/donor	It returns the identifiers of all the registered donors.
+* GET /{domain}/genome/{assembly_id}/sdata/donor	It returns the identifiers of all the registered donors.
 
-* GET /{domain}/genome/{assembly_id}sdata/donor/{donor_id}	It returns the donor whose donor id is this. Special '_all' donor id returns all the donors.
+* GET /{domain}/genome/{assembly_id}/sdata/donor/{donor_id}	It returns the donor whose donor id is this. Special '_all' donor id returns all the donors.
 
-* GET /{domain}/genome/{assembly_id}sdata/specimen	It returns the identifiers of all the registered specimens.
+* GET /{domain}/genome/{assembly_id}/sdata/specimen	It returns the identifiers of all the registered specimens.
 
-* GET /{domain}/genome/{assembly_id}sdata/specimen/{specimen_id}	It returns the specimen whose specimen id is this. Special '_all' specimen id returns all the specimens.
+* GET /{domain}/genome/{assembly_id}/sdata/specimen/{specimen_id}	It returns the specimen whose specimen id is this. Special '_all' specimen id returns all the specimens.
 
-* GET /{domain}/genome/{assembly_id}sdata/sample	It returns the identifiers of all the registered samples.
+* GET /{domain}/genome/{assembly_id}/sdata/sample	It returns the identifiers of all the registered samples.
 
-* GET /{domain}/genome/{assembly_id}sdata/sample/{sample_id}	It returns the sample whose sample id is this. Special '_all' sample id returns all the samples.
+* GET /{domain}/genome/{assembly_id}/sdata/sample/{sample_id}	It returns the sample whose sample id is this. Special '_all' sample id returns all the samples.
 
-* GET /{domain}/genome/{assembly_id}sdata/experiment	It returns the identifiers of all the registered experiments.
+* GET /{domain}/genome/{assembly_id}/sdata/experiment	It returns the identifiers of all the registered experiments.
 
-* GET /{domain}/genome/{assembly_id}sdata/experiment/{experiment_id}	It returns the experiment whose experiment id is this. Special '_all' experiment id returns all the experiments.
+* GET /{domain}/genome/{assembly_id}/sdata/experiment/{experiment_id}	It returns the experiment whose experiment id is this. Special '_all' experiment id returns all the experiments.
 
-* GET /{domain}/genome/{assembly_id}analysis/metadata	It returns the identifiers of all the registered analysis.
+* GET /{domain}/genome/{assembly_id}/analysis/metadata	It returns the identifiers of all the registered analysis.
 
-* GET /{domain}/genome/{assembly_id}analysis/metadata/{analysis_id}	It returns the analysis metadata whose analysis id is this. Special '_all' analysis id returns all the analysis.
+* GET /{domain}/genome/{assembly_id}/analysis/metadata/{analysis_id}	It returns the analysis metadata whose analysis id is this. Special '_all' analysis id returns all the analysis.
 
-* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}
-* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}	It returns the results which are in this range
 
-* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stream
-* GET /{domain}/genome/{assembly_id}analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stream	It returns a handler to fetch results chunk by chunk
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}/{chromosome_start}/{chromosome_end}/stream
+* GET /{domain}/genome/{assembly_id}/analysis/data/{chromosome}:{chromosome_start}-{chromosome_end}/stream	It returns a handler to fetch results chunk by chunk
 
 * POST /{domain}/genome/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
 * POST /{domain}/genome/{assembly_id}/analysis/data/fetchStream	Sending the handler receive with previous call, you are fetching the results chunk by chunk
