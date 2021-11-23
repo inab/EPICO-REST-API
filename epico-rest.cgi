@@ -18,7 +18,7 @@ set apphandler => 'PSGI';
 set environment => 'production';
 
 # Removing the extension
-my $psgi = Dancer2::FileUtils::path($FindBin::Script);
+my $psgi = Dancer2::FileUtils::path(File::Spec->catfile($FindBin::Bin, $FindBin::Script));
 my($volume,$directories,$file) = File::Spec->splitpath($psgi);
 
 my $rdot = rindex($file,'.');
